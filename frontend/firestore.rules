@@ -1,0 +1,101 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return signedIn() &&
+             request.auth.uid == uid;
+    }
+
+    function isAdmin() {
+      return signedIn() &&
+             request.auth.token.admin == true;
+    }
+
+    function validProfileSlot(profileId) {
+      return profileId == "profile-1" ||
+             profileId == "profile-2" ||
+             profileId == "profile-3" ||
+             profileId == "profile-4";
+    }
+
+    // ------------------------------
+    // USER ACCOUNT
+    // ------------------------------
+
+    match /users/{uid} {
+
+      allow read: if isOwner(uid);
+
+      allow create: if isOwner(uid)
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.role == "account_owner";
+
+      allow update: if isOwner(uid)
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.role == resource.data.role;
+
+      allow delete: if false;
+
+      // ------------------------------
+      // SUBPROFILES
+      // ------------------------------
+
+      match /profiles/{profileId} {
+
+        allow read:
+          if isOwner(uid);
+
+        allow create:
+          if isOwner(uid)
+          && validProfileSlot(profileId)
+          && request.resource.data.ownerId == request.auth.uid
+          && request.resource.data.name is string
+          && request.resource.data.name.size() >= 1
+          && request.resource.data.name.size() <= 32;
+
+        allow update:
+          if isOwner(uid)
+          && validProfileSlot(profileId)
+          && resource.data.ownerId == request.auth.uid
+          && request.resource.data.ownerId == request.auth.uid;
+
+        allow delete:
+          if isOwner(uid)
+          && validProfileSlot(profileId);
+      }
+    }
+
+    // ------------------------------
+    // PUBLIC STREAMING CONTENT
+    // ------------------------------
+
+    match /movies/{movieId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /series/{seriesId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /genres/{genreId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ------------------------------
+    // DENY EVERYTHING ELSE
+    // ------------------------------
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

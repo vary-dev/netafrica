@@ -1,56 +1,112 @@
-import { useNavigate } from "react-router";
+import {
+  LogOut,
+  Repeat2,
+} from "lucide-react";
 
-import { useProfile } from "@/hooks/useProfile";
-import { useAuth } from "@/hooks/useAuth";
+import {
+  useNavigate,
+} from "react-router";
+
+import {
+  Button,
+} from "@/components/ui/button";
+
+import {
+  useAuth,
+} from "@/hooks/useAuth";
+
+import {
+  useProfiles,
+} from "@/hooks/useProfiles";
+
+const LOGO_URL =
+  "https://res.cloudinary.com/dydg39ukk/image/upload/v1788805959/twentyfourseven-white_qatrph.png";
 
 export default function BrowsePage() {
+  const navigate =
+    useNavigate();
+
+  const {
+    logout,
+  } = useAuth();
+
   const {
     currentProfile,
     clearProfile,
-  } = useProfile();
-
-  const { logout } = useAuth();
-
-  const navigate = useNavigate();
+  } = useProfiles();
 
   return (
-    <main className="min-h-screen bg-[#080808] p-10 text-white">
-      <p className="text-sm text-[#C18A62]">
-        STREAMING EXPERIENCE
-      </p>
+    <main className="min-h-screen bg-[#070707] p-6 text-white">
+      <header className="box-container flex items-center justify-between py-5">
+        <img
+          src={LOGO_URL}
+          alt="24/7Box"
+          className="h-9"
+        />
 
-      <h1 className="mt-3 text-4xl font-bold">
-        Welcome,
-        {" "}
-        {currentProfile?.name}
-      </h1>
+        <div className="flex gap-2">
+          <Button
+            variant="ghost"
+            onClick={() => {
+              clearProfile();
 
-      <p className="mt-4 text-neutral-400">
-        Our full cinematic streaming
-        homepage will be built here next.
-      </p>
+              navigate(
+                "/profiles"
+              );
+            }}
+            className="text-[#B8B8B8] hover:bg-white/10 hover:text-white"
+          >
+            <Repeat2
+              className="mr-2"
+              size={17}
+            />
 
-      <div className="mt-10 flex gap-3">
-        <button
-          onClick={() => {
-            clearProfile();
-            navigate("/profiles");
-          }}
-          className="rounded-lg bg-[#191919] px-5 py-3"
-        >
-          Switch profile
-        </button>
+            Switch profile
+          </Button>
 
-        <button
-          onClick={async () => {
-            await logout();
-            navigate("/");
-          }}
-          className="rounded-lg border border-white/15 px-5 py-3"
-        >
-          Sign out
-        </button>
-      </div>
+          <Button
+            variant="ghost"
+            onClick={async () => {
+              await logout();
+
+              navigate("/");
+            }}
+            className="text-[#B8B8B8] hover:bg-white/10 hover:text-white"
+          >
+            <LogOut
+              className="mr-2"
+              size={17}
+            />
+
+            Sign out
+          </Button>
+        </div>
+      </header>
+
+      <section className="box-container py-24">
+        <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-[#FFD900]">
+          24/7BOX
+        </p>
+
+        <h1 className="mt-4 font-display text-5xl font-bold tracking-[-0.04em]">
+          Welcome,
+          {" "}
+          {
+            currentProfile
+              ?.name
+          }
+          .
+        </h1>
+
+        <p className="mt-4 max-w-xl text-[#747474]">
+          The full authenticated
+          streaming home—featured
+          movies, categories, My List,
+          Continue Watching and
+          personalized recommendations—
+          will be implemented here next.
+        </p>
+      </section>
     </main>
   );
 }

@@ -1,76 +1,140 @@
 import {
   createContext,
+  useCallback,
   useEffect,
+  useMemo,
   useState,
 } from "react";
+
+import { useAuth } from "@/hooks/useAuth";
+
+import {
+  createProfile as createProfileDocument,
+  getProfiles,
+} from "@/services/profileService";
 
 export const ProfileContext =
   createContext(null);
 
-const STORAGE_KEY = "stream_profiles";
-
 export function ProfileProvider({
   children,
 }) {
+  const { user } = useAuth();
+
   const [profiles, setProfiles] =
     useState([]);
 
-  const [currentProfile, setCurrentProfile] =
-    useState(null);
+  const [
+    currentProfile,
+    setCurrentProfile,
+  ] = useState(null);
+
+  const [loading, setLoading] =
+    useState(false);
+
+  const loadProfiles =
+    useCallback(async () => {
+      if (!user) {
+        setProfiles([]);
+        return;
+      }
+
+      setLoading(true);
+
+      try {
+        const result =
+          await getProfiles(user.uid);
+
+        setProfiles(result);
+      } finally {
+        setLoading(false);
+      }
+    }, [user]);
 
   useEffect(() => {
-    const saved =
-      localStorage.getItem(STORAGE_KEY);
+    loadProfiles();
+  }, [loadProfiles]);
 
-    if (!saved) return;
-
-    try {
-      setProfiles(JSON.parse(saved));
-    } catch {
-      localStorage.removeItem(STORAGE_KEY);
+  async function createProfile(
+    profile
+  ) {
+    if (!user) {
+      throw new Error(
+        "Authentication required."
+      );
     }
-  }, []);
 
-  useEffect(() => {
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify(profiles)
-    );
-  }, [profiles]);
+    const created =
+      await createProfileDocument(
+        user.uid,
+        profile
+      );
 
-  function createProfile(profile) {
-    const newProfile = {
-      id: crypto.randomUUID(),
-      ...profile,
-      createdAt:
-        new Date().toISOString(),
-    };
+    await loadProfiles();
 
-    setProfiles((current) => [
-      ...current,
-      newProfile,
-    ]);
-
-    return newProfile;
+    return created;
   }
 
   function selectProfile(profile) {
     setCurrentProfile(profile);
+
+    sessionStorage.setItem(
+      "247box_active_profile",
+      JSON.stringify(profile)
+    );
   }
 
   function clearProfile() {
     setCurrentProfile(null);
+
+    sessionStorage.removeItem(
+      "247box_active_profile"
+    );
   }
+
+  useEffect(() => {
+    const stored =
+      sessionStorage.getItem(
+        "247box_active_profile"
+      );
+
+    if (!stored) return;
+
+    try {
+      setCurrentProfile(
+        JSON.parse(stored)
+      );
+    } catch {
+      sessionStorage.removeItem(
+        "247box_active_profile"
+      );
+    }
+  }, []);
+
+  const value = useMemo(
+    () => ({
+      profiles,
+      currentProfile,
+      loading,
+
+      refreshProfiles:
+        loadProfiles,
+
+      createProfile,
+      selectProfile,
+      clearProfile,
+    }),
+    [
+      profiles,
+      currentProfile,
+      loading,
+      loadProfiles,
+    ]
+  );
 
   return (
     <ProfileContext.Provider
-      value={{
-        profiles,
-        currentProfile,
-        createProfile,
-        selectProfile,
-        clearProfile,
-      }}
+      value={value}
     >
       {children}
     </ProfileContext.Provider>

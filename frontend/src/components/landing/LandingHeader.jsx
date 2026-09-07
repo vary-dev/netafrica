@@ -1,40 +1,153 @@
-import { motion } from "motion/react";
+import {
+  useEffect,
+  useState,
+} from "react";
 
-export function LandingHeader({
-  onSignIn,
+import {
+  Menu,
+  Search,
+  UserRound,
+} from "lucide-react";
+
+import {
+  motion,
+} from "motion/react";
+
+import {
+  Button,
+} from "@/components/ui/button";
+
+const LOGO_URL =
+  "https://res.cloudinary.com/dydg39ukk/image/upload/v1788805959/twentyfourseven-white_qatrph.png";
+
+export default function LandingHeader({
+  onLogin,
+  onRegister,
 }) {
+  const [scrolled, setScrolled] =
+    useState(false);
+
+  useEffect(() => {
+    function handleScroll() {
+      setScrolled(
+        window.scrollY > 24
+      );
+    }
+
+    handleScroll();
+
+    window.addEventListener(
+      "scroll",
+      handleScroll,
+      {
+        passive: true,
+      }
+    );
+
+    return () =>
+      window.removeEventListener(
+        "scroll",
+        handleScroll
+      );
+  }, []);
+
   return (
-    <header className="fixed inset-x-0 top-0 z-50">
-      <div className="mx-auto flex h-20 max-w-[1500px] items-center justify-between px-6 lg:px-10">
-        <div className="text-xl font-black tracking-[-0.04em]">
-          VARY
-          <span className="bg-[linear-gradient(135deg,#7A3028,#A56243,#C18A62)] bg-clip-text text-transparent">
-            STREAM
-          </span>
+    <motion.header
+      animate={{
+        backgroundColor:
+          scrolled
+            ? "rgba(7,7,7,.92)"
+            : "rgba(7,7,7,0)",
+      }}
+      className="
+        fixed
+        inset-x-0
+        top-0
+        z-50
+        border-b
+        border-transparent
+        backdrop-blur-md
+      "
+    >
+      <div className="box-container flex h-[76px] items-center justify-between">
+        <div className="flex items-center gap-12">
+          <a href="#">
+            <img
+              src={LOGO_URL}
+              alt="24/7Box"
+              className="h-9 w-auto"
+            />
+          </a>
+
+          <nav className="hidden items-center gap-7 lg:flex">
+            <a
+              href="#discover"
+              className="text-sm font-semibold text-white"
+            >
+              Discover
+            </a>
+
+            <a
+              href="#trending"
+              className="text-sm font-medium text-[#B8B8B8] transition hover:text-white"
+            >
+              Trending
+            </a>
+
+            <a
+              href="#features"
+              className="text-sm font-medium text-[#B8B8B8] transition hover:text-white"
+            >
+              Features
+            </a>
+
+            <a
+              href="#profiles"
+              className="text-sm font-medium text-[#B8B8B8] transition hover:text-white"
+            >
+              Profiles
+            </a>
+          </nav>
         </div>
 
-        <nav className="hidden items-center gap-8 text-sm text-neutral-300 md:flex">
-          <a href="#discover">
-            Discover
-          </a>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="hidden text-white hover:bg-white/10 md:inline-flex"
+          >
+            <Search size={18} />
+          </Button>
 
-          <a href="#features">
-            Features
-          </a>
+          <Button
+            variant="ghost"
+            onClick={onLogin}
+            className="hidden text-white hover:bg-white/10 sm:inline-flex"
+          >
+            Sign in
+          </Button>
 
-          <a href="#profiles">
-            Profiles
-          </a>
-        </nav>
+          <Button
+            onClick={onRegister}
+            className="rounded-xl bg-[#FFD900] font-extrabold text-[#070707] hover:bg-[#FFE347]"
+          >
+            <UserRound
+              size={16}
+              className="mr-2 hidden sm:block"
+            />
 
-        <motion.button
-          whileTap={{ scale: 0.97 }}
-          onClick={onSignIn}
-          className="rounded-lg border border-white/15 bg-black/30 px-5 py-2.5 text-sm font-medium backdrop-blur-xl transition hover:bg-white/10"
-        >
-          Sign in
-        </motion.button>
+            Join 24/7Box
+          </Button>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-white hover:bg-white/10 lg:hidden"
+          >
+            <Menu size={20} />
+          </Button>
+        </div>
       </div>
-    </header>
+    </motion.header>
   );
 }

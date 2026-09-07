@@ -1,54 +1,162 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router";
+import {
+  useEffect,
+  useState,
+} from "react";
 
-import { LandingHeader } from "@/components/landing/LandingHeader";
-import { LandingHero } from "@/components/landing/LandingHero";
-import { AuthDialog } from "@/components/auth/AuthDialog";
+import {
+  useNavigate,
+} from "react-router";
 
-import { useAuth } from "@/hooks/useAuth";
+import {
+  demoMovies,
+} from "@/data/demoMovies";
+
+import {
+  getTrendingMovies,
+} from "@/services/movieService";
+
+import {
+  useAuth,
+} from "@/hooks/useAuth";
+
+import AuthDialog
+  from "@/components/auth/AuthDialog";
+
+import LandingHeader
+  from "@/components/landing/LandingHeader";
+
+import HeroSection
+  from "@/components/landing/HeroSection";
+
+import TrendingRail
+  from "@/components/landing/TrendingRail";
+
+import ProfileShowcase
+  from "@/components/landing/ProfileShowcase";
+
+import FeatureSection
+  from "@/components/landing/FeaturesSection";
+
+import FinalCTA
+  from "@/components/landing/FinalCTA";
+
+import LandingFooter
+  from "@/components/landing/LandingFooter";
 
 export default function LandingPage() {
-  const [authOpen, setAuthOpen] =
-    useState(false);
+  const navigate =
+    useNavigate();
 
-  const { user } = useAuth();
+  const {
+    user,
+    initializing,
+  } = useAuth();
 
-  const navigate = useNavigate();
+  const [movies, setMovies] =
+    useState(demoMovies);
+
+  const [
+    authDialog,
+    setAuthDialog,
+  ] = useState({
+    open: false,
+    mode: "login",
+  });
 
   useEffect(() => {
-    if (user) {
-      navigate("/profiles");
+    getTrendingMovies().then(
+      setMovies
+    );
+  }, []);
+
+  useEffect(() => {
+    if (
+      !initializing &&
+      user
+    ) {
+      navigate(
+        "/profiles"
+      );
     }
-  }, [user, navigate]);
+  }, [
+    user,
+    initializing,
+    navigate,
+  ]);
+
+  function openLogin() {
+    setAuthDialog({
+      open: true,
+      mode: "login",
+    });
+  }
+
+  function openRegister() {
+    setAuthDialog({
+      open: true,
+      mode: "register",
+    });
+  }
 
   return (
-    <main className="min-h-screen bg-[#080808] text-white">
+    <main className="min-h-screen overflow-hidden bg-[#070707] text-white">
       <LandingHeader
-        onSignIn={() =>
-          setAuthOpen(true)
+        onLogin={openLogin}
+        onRegister={
+          openRegister
         }
       />
 
-      <LandingHero
-        onStart={() =>
-          setAuthOpen(true)
+      <HeroSection
+        movie={movies[0]}
+        onProtectedAction={
+          openRegister
         }
       />
 
-      {/*
-        Coming next:
-        PreviewRail
-        ProfilesShowcase
-        FeaturesSection
-        DevicesSection
-        LandingCTA
-        Footer
-      */}
+      <TrendingRail
+        movies={movies}
+        onProtectedAction={
+          openRegister
+        }
+      />
+
+      <ProfileShowcase
+        onProtectedAction={
+          openRegister
+        }
+      />
+
+      <FeatureSection />
+
+      <FinalCTA
+        onStart={
+          openRegister
+        }
+      />
+
+      <LandingFooter />
 
       <AuthDialog
-        open={authOpen}
-        onClose={() =>
-          setAuthOpen(false)
+        key={authDialog.mode}
+        open={authDialog.open}
+        defaultMode={
+          authDialog.mode
+        }
+        onOpenChange={(
+          open
+        ) =>
+          setAuthDialog(
+            (current) => ({
+              ...current,
+              open,
+            })
+          )
+        }
+        onSuccess={() =>
+          navigate(
+            "/profiles"
+          )
         }
       />
     </main>

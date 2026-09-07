@@ -6,16 +6,21 @@ import {
   createRoot,
 } from "react-dom/client";
 
-import "@fontsource-variable/inter";
+import "@fontsource-variable/plus-jakarta-sans";
+import "@fontsource-variable/space-grotesk";
 
 import "@/styles/index.css";
 
+import App
+  from "@/app/App";
 
-import App from "@/app/App";
-import AppProviders from "@/app/providers";
+import AppProviders
+  from "@/app/providers";
 
 createRoot(
-  document.getElementById("root")
+  document.getElementById(
+    "root"
+  )
 ).render(
   <StrictMode>
     <AppProviders>

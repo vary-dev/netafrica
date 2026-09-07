@@ -1,15 +1,18 @@
 import {
   createContext,
   useEffect,
+  useMemo,
   useState,
 } from "react";
 
 import {
   createUserWithEmailAndPassword,
   onAuthStateChanged,
+  sendPasswordResetEmail,
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut,
+  updateProfile,
 } from "firebase/auth";
 
 import {
@@ -17,64 +20,142 @@ import {
   googleProvider,
 } from "@/firebase/firebase";
 
-export const AuthContext = createContext(null);
+import {
+  ensureUserDocument,
+} from "@/services/userService";
 
-export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
+export const AuthContext =
+  createContext(null);
 
-  const [loading, setLoading] = useState(true);
+export function AuthProvider({
+  children,
+}) {
+  const [user, setUser] =
+    useState(null);
+
+  const [initializing, setInitializing] =
+    useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(
-      auth,
-      (firebaseUser) => {
-        setUser(firebaseUser);
-        setLoading(false);
-      }
-    );
+    const unsubscribe =
+      onAuthStateChanged(
+        auth,
+        async (firebaseUser) => {
+          try {
+            if (firebaseUser) {
+              await ensureUserDocument(
+                firebaseUser
+              );
+            }
+
+            setUser(firebaseUser);
+          } catch (error) {
+            console.error(
+              "User synchronization failed:",
+              error
+            );
+          } finally {
+            setInitializing(false);
+          }
+        }
+      );
 
     return unsubscribe;
   }, []);
 
-  async function register(email, password) {
-    return createUserWithEmailAndPassword(
-      auth,
-      email,
-      password
+  async function register({
+    name,
+    email,
+    password,
+  }) {
+    const credential =
+      await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+
+    await updateProfile(
+      credential.user,
+      {
+        displayName: name,
+      }
     );
+
+    await ensureUserDocument(
+      credential.user
+    );
+
+    return credential.user;
   }
 
-  async function login(email, password) {
-    return signInWithEmailAndPassword(
-      auth,
-      email,
-      password
+  async function login({
+    email,
+    password,
+  }) {
+    const credential =
+      await signInWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+
+    await ensureUserDocument(
+      credential.user
     );
+
+    return credential.user;
   }
 
   async function loginWithGoogle() {
-    return signInWithPopup(
+    const credential =
+      await signInWithPopup(
+        auth,
+        googleProvider
+      );
+
+    await ensureUserDocument(
+      credential.user
+    );
+
+    return credential.user;
+  }
+
+  async function resetPassword(email) {
+    return sendPasswordResetEmail(
       auth,
-      googleProvider
+      email
     );
   }
 
   async function logout() {
-    return signOut(auth);
+    await signOut(auth);
   }
 
-  const value = {
-    user,
-    loading,
-    register,
-    login,
-    loginWithGoogle,
-    logout,
-    isAuthenticated: Boolean(user),
-  };
+  const value = useMemo(
+    () => ({
+      user,
+      initializing,
+
+      isAuthenticated:
+        Boolean(user),
+
+      register,
+      login,
+      loginWithGoogle,
+      resetPassword,
+      logout,
+    }),
+    [
+      user,
+      initializing,
+    ]
+  );
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider
+      value={value}
+    >
       {children}
     </AuthContext.Provider>
   );

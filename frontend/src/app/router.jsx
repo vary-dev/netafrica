@@ -3,27 +3,41 @@ import {
   createBrowserRouter,
 } from "react-router";
 
-import LandingPage from "@/pages/LandingPage";
-import ProfilesPage from "@/pages/ProfilesPage";
-import BrowsePage from "@/pages/BrowsePage";
+import {
+  useAuth,
+} from "@/hooks/useAuth";
 
-import { useAuth } from "@/hooks/useAuth";
-import { useProfile } from "@/hooks/useProfile";
+import {
+  useProfiles,
+} from "@/hooks/useProfiles";
 
-function ProtectedRoute({
+import LandingPage
+  from "@/pages/LandingPage";
+
+import ProfilesPage
+  from "@/pages/ProfilesPage";
+
+import BrowsePage
+  from "@/pages/BrowsePage";
+
+function LoadingScreen() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-[#070707]">
+      <div className="size-7 animate-spin rounded-full border-2 border-white/15 border-t-[#FFD900]" />
+    </div>
+  );
+}
+
+function AuthenticatedRoute({
   children,
 }) {
   const {
     user,
-    loading,
+    initializing,
   } = useAuth();
 
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-[#080808] text-white">
-        Loading...
-      </div>
-    );
+  if (initializing) {
+    return <LoadingScreen />;
   }
 
   if (!user) {
@@ -38,11 +52,12 @@ function ProtectedRoute({
   return children;
 }
 
-function ProfileProtectedRoute({
+function ProfileRoute({
   children,
 }) {
-  const { currentProfile } =
-    useProfile();
+  const {
+    currentProfile,
+  } = useProfiles();
 
   if (!currentProfile) {
     return (
@@ -60,26 +75,27 @@ export const router =
   createBrowserRouter([
     {
       path: "/",
-      element: <LandingPage />,
+      element:
+        <LandingPage />,
     },
 
     {
       path: "/profiles",
       element: (
-        <ProtectedRoute>
+        <AuthenticatedRoute>
           <ProfilesPage />
-        </ProtectedRoute>
+        </AuthenticatedRoute>
       ),
     },
 
     {
       path: "/browse",
       element: (
-        <ProtectedRoute>
-          <ProfileProtectedRoute>
+        <AuthenticatedRoute>
+          <ProfileRoute>
             <BrowsePage />
-          </ProfileProtectedRoute>
-        </ProtectedRoute>
+          </ProfileRoute>
+        </AuthenticatedRoute>
       ),
     },
 

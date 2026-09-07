@@ -1,5 +1,18 @@
-import { AuthProvider } from "@/context/AuthContext";
-import { ProfileProvider } from "@/context/ProfileContext";
+import {
+  AuthProvider,
+} from "@/context/AuthContext";
+
+import {
+  ProfileProvider,
+} from "@/context/ProfileContext";
+
+import {
+  TooltipProvider,
+} from "@/components/ui/tooltip";
+
+import {
+  Toaster,
+} from "@/components/ui/sonner";
 
 export default function AppProviders({
   children,
@@ -7,7 +20,15 @@ export default function AppProviders({
   return (
     <AuthProvider>
       <ProfileProvider>
-        {children}
+        <TooltipProvider>
+          {children}
+
+          <Toaster
+            position="top-center"
+            richColors
+            closeButton
+          />
+        </TooltipProvider>
       </ProfileProvider>
     </AuthProvider>
   );
