@@ -3,22 +3,17 @@ import {
   createBrowserRouter,
 } from "react-router";
 
-import {
-  useAuth,
-} from "@/hooks/useAuth";
-
-import {
-  useProfiles,
-} from "@/hooks/useProfiles";
-
-import LandingPage
-  from "@/pages/LandingPage";
-
-import ProfilesPage
-  from "@/pages/ProfilesPage";
-
-import BrowsePage
-  from "@/pages/BrowsePage";
+import { useAuth } from "@/hooks/useAuth";
+import { useProfiles } from "@/hooks/useProfiles";
+import LandingPage from "@/pages/LandingPage";
+import ProfilesPage from "@/pages/ProfilesPage";
+import BrowsePage from "@/pages/BrowsePage";
+import MoviesPage from "@/pages/MoviesPage";
+import SeriesPage from "@/pages/SeriesPage";
+import MyListPage from "@/pages/MyListPage";
+import SearchPage from "@/pages/SearchPage";
+import SettingsPage from "@/pages/SettingsPage";
+import DetailsPage from "@/pages/DetailsPage";
 
 function LoadingScreen() {
   return (
@@ -28,84 +23,104 @@ function LoadingScreen() {
   );
 }
 
-function AuthenticatedRoute({
-  children,
-}) {
-  const {
-    user,
-    initializing,
-  } = useAuth();
+function AuthenticatedRoute({ children }) {
+  const { user, initializing } = useAuth();
 
-  if (initializing) {
-    return <LoadingScreen />;
-  }
-
-  if (!user) {
-    return (
-      <Navigate
-        to="/"
-        replace
-      />
-    );
-  }
+  if (initializing) return <LoadingScreen />;
+  if (!user) return <Navigate to="/" replace />;
 
   return children;
 }
 
-function ProfileRoute({
-  children,
-}) {
-  const {
-    currentProfile,
-  } = useProfiles();
+function ProfileRoute({ children }) {
+  const { currentProfile } = useProfiles();
 
   if (!currentProfile) {
-    return (
-      <Navigate
-        to="/profiles"
-        replace
-      />
-    );
+    return <Navigate to="/profiles" replace />;
   }
 
   return children;
 }
 
-export const router =
-  createBrowserRouter([
-    {
-      path: "/",
-      element:
-        <LandingPage />,
-    },
+function ProtectedProfilePage({ children }) {
+  return (
+    <AuthenticatedRoute>
+      <ProfileRoute>{children}</ProfileRoute>
+    </AuthenticatedRoute>
+  );
+}
 
-    {
-      path: "/profiles",
-      element: (
-        <AuthenticatedRoute>
-          <ProfilesPage />
-        </AuthenticatedRoute>
-      ),
-    },
-
-    {
-      path: "/browse",
-      element: (
-        <AuthenticatedRoute>
-          <ProfileRoute>
-            <BrowsePage />
-          </ProfileRoute>
-        </AuthenticatedRoute>
-      ),
-    },
-
-    {
-      path: "*",
-      element: (
-        <Navigate
-          to="/"
-          replace
-        />
-      ),
-    },
-  ]);
+export const router = createBrowserRouter([
+  {
+    path: "/",
+    element: <LandingPage />,
+  },
+  {
+    path: "/profiles",
+    element: (
+      <AuthenticatedRoute>
+        <ProfilesPage />
+      </AuthenticatedRoute>
+    ),
+  },
+  {
+    path: "/browse",
+    element: (
+      <ProtectedProfilePage>
+        <BrowsePage />
+      </ProtectedProfilePage>
+    ),
+  },
+  {
+    path: "/movies",
+    element: (
+      <ProtectedProfilePage>
+        <MoviesPage />
+      </ProtectedProfilePage>
+    ),
+  },
+  {
+    path: "/series",
+    element: (
+      <ProtectedProfilePage>
+        <SeriesPage />
+      </ProtectedProfilePage>
+    ),
+  },
+  {
+    path: "/my-netflix",
+    element: (
+      <ProtectedProfilePage>
+        <MyListPage />
+      </ProtectedProfilePage>
+    ),
+  },
+  {
+    path: "/search",
+    element: (
+      <ProtectedProfilePage>
+        <SearchPage />
+      </ProtectedProfilePage>
+    ),
+  },
+  {
+    path: "/settings",
+    element: (
+      <ProtectedProfilePage>
+        <SettingsPage />
+      </ProtectedProfilePage>
+    ),
+  },
+  {
+    path: "/title/:slug",
+    element: (
+      <ProtectedProfilePage>
+        <DetailsPage />
+      </ProtectedProfilePage>
+    ),
+  },
+  {
+    path: "*",
+    element: <Navigate to="/" replace />,
+  },
+]);

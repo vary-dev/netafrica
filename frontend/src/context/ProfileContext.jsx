@@ -7,135 +7,155 @@ import {
 } from "react";
 
 import { useAuth } from "@/hooks/useAuth";
-
 import {
   createProfile as createProfileDocument,
   getProfiles,
+  updateProfile as updateProfileDocument,
 } from "@/services/profileService";
 
-export const ProfileContext =
-  createContext(null);
+export const ProfileContext = createContext(null);
 
-export function ProfileProvider({
-  children,
-}) {
+const ACTIVE_PROFILE_KEY = "247box_active_profile";
+
+export function ProfileProvider({ children }) {
   const { user } = useAuth();
+  const [profiles, setProfiles] = useState([]);
+  const [currentProfile, setCurrentProfile] = useState(null);
+  const [loading, setLoading] = useState(false);
 
-  const [profiles, setProfiles] =
-    useState([]);
+  const loadProfiles = useCallback(async () => {
+    if (!user) {
+      setProfiles([]);
+      setCurrentProfile(null);
+      sessionStorage.removeItem(ACTIVE_PROFILE_KEY);
+      return;
+    }
 
-  const [
-    currentProfile,
-    setCurrentProfile,
-  ] = useState(null);
+    setLoading(true);
 
-  const [loading, setLoading] =
-    useState(false);
+    try {
+      const result = await getProfiles(user.uid);
+      setProfiles(result);
 
-  const loadProfiles =
-    useCallback(async () => {
-      if (!user) {
-        setProfiles([]);
+      const stored = sessionStorage.getItem(ACTIVE_PROFILE_KEY);
+
+      if (!stored) {
+        setCurrentProfile(null);
         return;
       }
 
-      setLoading(true);
-
       try {
-        const result =
-          await getProfiles(user.uid);
+        const parsed = JSON.parse(stored);
+        const verified = result.find((profile) => profile.id === parsed?.id);
 
-        setProfiles(result);
-      } finally {
-        setLoading(false);
+        if (verified) {
+          setCurrentProfile(verified);
+          sessionStorage.setItem(
+            ACTIVE_PROFILE_KEY,
+            JSON.stringify(verified)
+          );
+        } else {
+          setCurrentProfile(null);
+          sessionStorage.removeItem(ACTIVE_PROFILE_KEY);
+        }
+      } catch {
+        setCurrentProfile(null);
+        sessionStorage.removeItem(ACTIVE_PROFILE_KEY);
       }
-    }, [user]);
+    } catch (error) {
+      console.error("Unable to load profiles:", error);
+      setProfiles([]);
+      setCurrentProfile(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
 
   useEffect(() => {
     loadProfiles();
   }, [loadProfiles]);
 
-  async function createProfile(
-    profile
-  ) {
-    if (!user) {
-      throw new Error(
-        "Authentication required."
-      );
-    }
+  async function createProfile(profile) {
+    if (!user) throw new Error("Authentication required.");
 
-    const created =
-      await createProfileDocument(
-        user.uid,
-        profile
-      );
-
+    const created = await createProfileDocument(user.uid, profile);
     await loadProfiles();
-
     return created;
   }
 
-  function selectProfile(profile) {
-    setCurrentProfile(profile);
+  async function updateProfile(profileId, changes) {
+    if (!user) throw new Error("Authentication required.");
 
+    const updated = await updateProfileDocument(
+      user.uid,
+      profileId,
+      changes
+    );
+
+    const nextChanges = {
+      ...updated,
+      ...changes,
+    };
+
+    setProfiles((current) =>
+      current.map((profile) =>
+        profile.id === profileId
+          ? { ...profile, ...nextChanges }
+          : profile
+      )
+    );
+
+    if (currentProfile?.id === profileId) {
+      const nextProfile = {
+        ...currentProfile,
+        ...nextChanges,
+      };
+
+      setCurrentProfile(nextProfile);
+      sessionStorage.setItem(
+        ACTIVE_PROFILE_KEY,
+        JSON.stringify(nextProfile)
+      );
+    }
+
+    return nextChanges;
+  }
+
+  function selectProfile(profile) {
+    const verified = profiles.find((item) => item.id === profile?.id);
+
+    if (!verified) {
+      throw new Error("That profile is not available for this account.");
+    }
+
+    setCurrentProfile(verified);
     sessionStorage.setItem(
-      "247box_active_profile",
-      JSON.stringify(profile)
+      ACTIVE_PROFILE_KEY,
+      JSON.stringify(verified)
     );
   }
 
   function clearProfile() {
     setCurrentProfile(null);
-
-    sessionStorage.removeItem(
-      "247box_active_profile"
-    );
+    sessionStorage.removeItem(ACTIVE_PROFILE_KEY);
   }
-
-  useEffect(() => {
-    const stored =
-      sessionStorage.getItem(
-        "247box_active_profile"
-      );
-
-    if (!stored) return;
-
-    try {
-      setCurrentProfile(
-        JSON.parse(stored)
-      );
-    } catch {
-      sessionStorage.removeItem(
-        "247box_active_profile"
-      );
-    }
-  }, []);
 
   const value = useMemo(
     () => ({
       profiles,
       currentProfile,
       loading,
-
-      refreshProfiles:
-        loadProfiles,
-
+      refreshProfiles: loadProfiles,
       createProfile,
+      updateProfile,
       selectProfile,
       clearProfile,
     }),
-    [
-      profiles,
-      currentProfile,
-      loading,
-      loadProfiles,
-    ]
+    [profiles, currentProfile, loading, loadProfiles]
   );
 
   return (
-    <ProfileContext.Provider
-      value={value}
-    >
+    <ProfileContext.Provider value={value}>
       {children}
     </ProfileContext.Provider>
   );

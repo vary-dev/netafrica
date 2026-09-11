@@ -8,13 +8,11 @@ service cloud.firestore {
     }
 
     function isOwner(uid) {
-      return signedIn() &&
-             request.auth.uid == uid;
+      return signedIn() && request.auth.uid == uid;
     }
 
     function isAdmin() {
-      return signedIn() &&
-             request.auth.token.admin == true;
+      return signedIn() && request.auth.token.admin == true;
     }
 
     function validProfileSlot(profileId) {
@@ -24,64 +22,93 @@ service cloud.firestore {
              profileId == "profile-4";
     }
 
-    // ------------------------------
-    // USER ACCOUNT
-    // ------------------------------
+    function validProfileKeys() {
+      return request.resource.data.keys().hasOnly([
+        "ownerId",
+        "name",
+        "avatarUrl",
+        "avatarStyle",
+        "profileType",
+        "ageGroup",
+        "isKids",
+        "language",
+        "preferredLanguage",
+        "subtitleLanguage",
+        "maturityRating",
+        "preferredGenres",
+        "autoplayNextEpisode",
+        "autoplayPreviews",
+        "createdAt",
+        "updatedAt"
+      ]);
+    }
 
     match /users/{uid} {
-
       allow read: if isOwner(uid);
 
       allow create: if isOwner(uid)
         && request.resource.data.uid == request.auth.uid
-        && request.resource.data.role == "account_owner";
+        && request.resource.data.role == "account_owner"
+        && request.resource.data.plan == "free"
+        && request.resource.data.subscriptionStatus == "inactive";
 
       allow update: if isOwner(uid)
         && request.resource.data.uid == resource.data.uid
-        && request.resource.data.role == resource.data.role;
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.plan == resource.data.plan
+        && request.resource.data.subscriptionStatus == resource.data.subscriptionStatus
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(["email", "displayName", "photoURL", "updatedAt"]);
 
       allow delete: if false;
 
-      // ------------------------------
-      // SUBPROFILES
-      // ------------------------------
-
       match /profiles/{profileId} {
+        allow read: if isOwner(uid);
 
-        allow read:
-          if isOwner(uid);
-
-        allow create:
-          if isOwner(uid)
+        allow create: if isOwner(uid)
           && validProfileSlot(profileId)
+          && validProfileKeys()
           && request.resource.data.ownerId == request.auth.uid
           && request.resource.data.name is string
           && request.resource.data.name.size() >= 1
           && request.resource.data.name.size() <= 32;
 
-        allow update:
-          if isOwner(uid)
+        allow update: if isOwner(uid)
           && validProfileSlot(profileId)
+          && validProfileKeys()
           && resource.data.ownerId == request.auth.uid
-          && request.resource.data.ownerId == request.auth.uid;
+          && request.resource.data.ownerId == resource.data.ownerId
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            "name",
+            "avatarUrl",
+            "avatarStyle",
+            "profileType",
+            "ageGroup",
+            "isKids",
+            "language",
+            "preferredLanguage",
+            "subtitleLanguage",
+            "maturityRating",
+            "preferredGenres",
+            "autoplayNextEpisode",
+            "autoplayPreviews",
+            "updatedAt"
+          ]);
 
-        allow delete:
-          if isOwner(uid)
-          && validProfileSlot(profileId);
+        allow delete: if isOwner(uid)
+          && validProfileSlot(profileId)
+          && resource.data.ownerId == request.auth.uid;
       }
     }
 
-    // ------------------------------
-    // PUBLIC STREAMING CONTENT
-    // ------------------------------
-
     match /movies/{movieId} {
-      allow read: if true;
+      allow read: if resource.data.status == "published" || isAdmin();
       allow write: if isAdmin();
     }
 
     match /series/{seriesId} {
-      allow read: if true;
+      allow read: if resource.data.status == "published" || isAdmin();
       allow write: if isAdmin();
     }
 
@@ -89,10 +116,6 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isAdmin();
     }
-
-    // ------------------------------
-    // DENY EVERYTHING ELSE
-    // ------------------------------
 
     match /{document=**} {
       allow read, write: if false;
