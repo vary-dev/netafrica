@@ -110,24 +110,20 @@ export async function registerBackend({ email, password }) {
   });
 }
 
-export async function verifyBackendSession(token = getBackendToken()) {
-  if (!token) return false;
-
-  try {
-    await authClient.get("/protected", {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    return true;
-  } catch (error) {
-    if (error.response?.status === 401) {
-      clearBackendSession();
-    }
-
-    throw error;
+export function verifyBackendSession(token = getBackendToken()) {
+  if (!token || isExpired(token)) {
+    clearBackendSession();
+    return false;
   }
+
+  const payload = decodeJwtPayload(token);
+
+  if (!payload?.accountId) {
+    clearBackendSession();
+    return false;
+  }
+
+  return true;
 }
 
 export async function ensureBackendSession({
@@ -161,6 +157,9 @@ export async function ensureBackendSession({
     token = await loginBackend({ email, password });
   }
 
-  await verifyBackendSession(token);
+  if (!verifyBackendSession(token)) {
+    throw new Error("The backend returned an invalid JWT payload.");
+  }
+
   return token;
 }
