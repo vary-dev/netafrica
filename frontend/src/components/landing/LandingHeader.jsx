@@ -4,8 +4,6 @@ import {
 } from "react";
 
 import {
-  Menu,
-  Search,
   UserRound,
 } from "lucide-react";
 
@@ -39,9 +37,7 @@ export default function LandingHeader({
     window.addEventListener(
       "scroll",
       handleScroll,
-      {
-        passive: true,
-      }
+      { passive: true }
     );
 
     return () =>
@@ -57,25 +53,21 @@ export default function LandingHeader({
         backgroundColor:
           scrolled
             ? "rgba(7,7,7,.92)"
-            : "rgba(7,7,7,0)",
+            : "rgba(7,7,7,.14)",
       }}
-      className="
-        fixed
-        inset-x-0
-        top-0
-        z-50
-        border-b
-        border-transparent
-        backdrop-blur-md
-      "
+      className={`fixed inset-x-0 top-0 z-50 border-b backdrop-blur-xl transition-colors ${
+        scrolled
+          ? "border-white/[0.06]"
+          : "border-transparent"
+      }`}
     >
-      <div className="box-container flex h-[76px] items-center justify-between">
-        <div className="flex items-center gap-12">
-          <a href="#">
+      <div className="box-container flex h-[70px] items-center justify-between gap-4 sm:h-[76px]">
+        <div className="flex min-w-0 items-center gap-10">
+          <a href="#discover" className="shrink-0">
             <img
               src={LOGO_URL}
               alt="24/7Box"
-              className="h-9 w-auto"
+              className="h-8 w-auto sm:h-9"
             />
           </a>
 
@@ -88,63 +80,40 @@ export default function LandingHeader({
             </a>
 
             <a
-              href="#trending"
-              className="text-sm font-medium text-[#B8B8B8] transition hover:text-white"
-            >
-              Trending
-            </a>
-
-            <a
               href="#features"
-              className="text-sm font-medium text-[#B8B8B8] transition hover:text-white"
+              className="text-sm font-medium text-[#A5A5A5] transition hover:text-white"
             >
               Features
             </a>
 
             <a
               href="#profiles"
-              className="text-sm font-medium text-[#B8B8B8] transition hover:text-white"
+              className="text-sm font-medium text-[#A5A5A5] transition hover:text-white"
             >
               Profiles
             </a>
           </nav>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="hidden text-white hover:bg-white/10 md:inline-flex"
-          >
-            <Search size={18} />
-          </Button>
-
+        <div className="flex shrink-0 items-center gap-2">
           <Button
             variant="ghost"
             onClick={onLogin}
-            className="hidden text-white hover:bg-white/10 sm:inline-flex"
+            className="h-10 rounded-xl px-3 text-sm font-bold text-white hover:bg-white/10 hover:text-white sm:px-4"
           >
             Sign in
           </Button>
 
           <Button
             onClick={onRegister}
-            className="rounded-xl bg-[#FFD900] font-extrabold text-[#070707] hover:bg-[#FFE347]"
+            className="h-10 rounded-xl bg-[#FFD900] px-3 font-extrabold text-[#070707] shadow-lg shadow-[#FFD900]/10 hover:bg-[#FFE347] sm:px-4"
           >
             <UserRound
               size={16}
               className="mr-2 hidden sm:block"
             />
-
-            Join 24/7Box
-          </Button>
-
-          <Button
-            variant="ghost"
-            size="icon"
-            className="text-white hover:bg-white/10 lg:hidden"
-          >
-            <Menu size={20} />
+            <span className="hidden sm:inline">Join 24/7Box</span>
+            <span className="sm:hidden">Join</span>
           </Button>
         </div>
       </div>
