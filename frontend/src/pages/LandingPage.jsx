@@ -8,10 +8,6 @@ import {
 } from "react-router";
 
 import {
-  demoMovies,
-} from "@/data/demoMovies";
-
-import {
   getTrendingMovies,
 } from "@/services/movieService";
 
@@ -53,7 +49,7 @@ export default function LandingPage() {
   } = useAuth();
 
   const [movies, setMovies] =
-    useState(demoMovies);
+    useState([]);
 
   const [
     authDialog,
