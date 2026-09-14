@@ -12,6 +12,7 @@ export default function ContentRail({
   onPlay,
   onAdd,
   onLike,
+  onDownload,
 }) {
   const railRef = useRef(null);
 
@@ -28,7 +29,7 @@ export default function ContentRail({
     <section className="relative py-5 sm:py-7">
       <div className="box-container">
         <div className="mb-4 flex items-end justify-between gap-4">
-          <h2 className="font-display text-xl font-bold tracking-[-0.025em] sm:text-2xl">
+          <h2 className="font-display text-lg font-bold tracking-[-0.025em] sm:text-xl lg:text-2xl">
             {title}
           </h2>
 
@@ -44,7 +45,7 @@ export default function ContentRail({
 
         <div
           ref={railRef}
-          className={`flex snap-x gap-4 overflow-x-auto overflow-y-visible pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
+          className={`flex snap-x gap-3 overflow-x-auto overflow-y-visible pt-1 [scrollbar-width:none] sm:gap-4 [&::-webkit-scrollbar]:hidden ${
             variant === "standard" ? "pb-28" : "pb-5"
           }`}
         >
@@ -70,6 +71,7 @@ export default function ContentRail({
                   onDetails={() => onDetails?.(item)}
                   onAdd={() => onAdd?.(item)}
                   onLike={() => onLike?.(item)}
+                  onDownload={() => onDownload?.(item)}
                 />
               )}
             </div>
@@ -86,7 +88,7 @@ function RailButton({ children, label, ...props }) {
       type="button"
       aria-label={label}
       {...props}
-      className="flex size-9 items-center justify-center rounded-full border border-white/10 bg-[#151515] text-white transition hover:border-[#FFD900]/40 hover:text-[#FFD900]"
+      className="flex size-9 items-center justify-center rounded-full border border-white/10 bg-[#151515]/90 text-white backdrop-blur-md transition hover:border-[#FFD900]/40 hover:text-[#FFD900]"
     >
       {children}
     </button>
