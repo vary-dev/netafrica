@@ -1,52 +1,19 @@
 import {
-  collection,
-  getDocs,
-  limit,
-  orderBy,
-  query,
-} from "firebase/firestore";
-
-import {
-  db,
-} from "@/firebase/firebase";
-
-import {
-  demoMovies,
-} from "@/data/demoMovies";
+  getMovies,
+} from "@/services/contentService";
 
 export async function getTrendingMovies() {
   try {
-    const q = query(
-      collection(
-        db,
-        "movies"
-      ),
-      orderBy(
-        "trendingRank",
-        "asc"
-      ),
-      limit(10)
-    );
-
-    const snapshot =
-      await getDocs(q);
-
-    if (snapshot.empty) {
-      return demoMovies;
-    }
-
-    return snapshot.docs.map(
-      (movieDoc) => ({
-        id: movieDoc.id,
-        ...movieDoc.data(),
-      })
-    );
+    return await getMovies(null);
   } catch (error) {
-    console.warn(
-      "Using landing fallback data:",
-      error
+    // Nganji's current content endpoint is authenticated. The public landing
+    // page therefore stays brand-led until a backend JWT session exists.
+    console.info(
+      "Public catalog is unavailable before backend authentication:",
+      error.response?.data?.message ||
+        error.message
     );
 
-    return demoMovies;
+    return [];
   }
 }
