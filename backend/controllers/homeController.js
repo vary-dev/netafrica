@@ -13,6 +13,7 @@ const getHome = async (req, res) => {
 
         if (profiles.length === 0) {
             return res.status(404).json({
+                success: false,
                 message: "Profile not found"
             });
         }
@@ -20,30 +21,27 @@ const getHome = async (req, res) => {
         const profile = profiles[0];
 
         const [content] = await db.query(
-            `SELECT id, title, type
-             FROM profile_content
-             WHERE profile_id = ?`,
+            `SELECT pc.id, pc.type, m.id AS movieId, m.title,
+                    m.poster, m.backdrop, m.video_url AS videoUrl,
+                    m.duration, m.maturity_rating AS maturityRating
+             FROM profile_content pc
+             JOIN movies m ON m.id = pc.movie_id
+             WHERE pc.profile_id = ?`,
             [profileId]
         );
 
-        const myList = content.filter(
-            item => item.type === "my_list"
-        );
-
-        const recentlyWatched = content.filter(
-            item => item.type === "recently_watched"
-        );
+        const myList = content.filter(item => item.type === "my_list");
+        const recentlyWatched = content.filter(item => item.type === "recently_watched");
 
         res.json({
-            profile,
-            myList,
-            recentlyWatched
+            success: true,
+            data: { profile, myList, recentlyWatched }
         });
 
     } catch (error) {
         console.error(error);
-
         res.status(500).json({
+            success: false,
             message: "Server error"
         });
     }
