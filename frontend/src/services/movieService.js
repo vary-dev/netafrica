@@ -2,14 +2,20 @@ import {
   getMovies,
 } from "@/services/contentService";
 
+import {
+  hasBackendSession,
+} from "@/services/backendAuthService";
+
 export async function getTrendingMovies() {
+  if (!hasBackendSession()) {
+    return [];
+  }
+
   try {
     return await getMovies(null);
   } catch (error) {
-    // Nganji's current content endpoint is authenticated. The public landing
-    // page therefore stays brand-led until a backend JWT session exists.
     console.info(
-      "Public catalog is unavailable before backend authentication:",
+      "Authenticated catalog is currently unavailable:",
       error.response?.data?.message ||
         error.message
     );
