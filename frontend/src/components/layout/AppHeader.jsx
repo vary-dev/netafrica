@@ -37,7 +37,7 @@ const navigation = [
 
 export default function AppHeader() {
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { logout, backendReady } = useAuth();
   const { currentProfile, clearProfile } = useProfiles();
   const [searchOpen, setSearchOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -127,11 +127,11 @@ export default function AppHeader() {
             </Button>
 
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  className="ml-1 flex items-center gap-2 rounded-xl p-1.5 outline-none transition hover:bg-white/10"
-                >
+              <DropdownMenuTrigger
+                className="ml-1 flex items-center gap-2 rounded-xl p-1.5 outline-none transition hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-[#FFD900]/40"
+                aria-label="Open profile menu"
+              >
+                <span className="relative">
                   <Avatar className="size-8 rounded-lg border border-white/10">
                     <AvatarImage
                       src={currentProfile?.avatarUrl || ""}
@@ -141,11 +141,19 @@ export default function AppHeader() {
                       {currentProfile?.name?.slice(0, 1).toUpperCase() || "B"}
                     </AvatarFallback>
                   </Avatar>
-                  <ChevronDown
-                    size={14}
-                    className="hidden text-[#8b8b8b] sm:block"
+
+                  <span
+                    title={backendReady ? "Node API connected" : "Node API not connected"}
+                    className={`absolute -bottom-0.5 -right-0.5 size-2.5 rounded-full border-2 border-[#070707] ${
+                      backendReady ? "bg-[#37D67A]" : "bg-[#FF5252]"
+                    }`}
                   />
-                </button>
+                </span>
+
+                <ChevronDown
+                  size={14}
+                  className="hidden text-[#8b8b8b] sm:block"
+                />
               </DropdownMenuTrigger>
 
               <DropdownMenuContent
@@ -157,7 +165,9 @@ export default function AppHeader() {
                     {currentProfile?.name || "24/7Box profile"}
                   </p>
                   <p className="mt-0.5 text-xs text-[#747474]">
-                    Active viewing profile
+                    {backendReady
+                      ? "Streaming API connected"
+                      : "Streaming API needs connection"}
                   </p>
                 </div>
 
