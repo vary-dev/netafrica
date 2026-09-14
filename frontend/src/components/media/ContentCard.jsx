@@ -1,5 +1,6 @@
 import {
   Check,
+  Download,
   Info,
   Play,
   Plus,
@@ -13,27 +14,28 @@ export default function ContentCard({
   onDetails,
   onAdd,
   onLike,
+  onDownload,
 }) {
   return (
     <motion.article
-      whileHover={{ y: -7, scale: 1.035 }}
+      whileHover={{ y: -7, scale: 1.025 }}
       transition={{ duration: 0.2 }}
-      className="group relative w-[235px] flex-none sm:w-[260px] lg:w-[285px]"
+      className="group relative w-[220px] flex-none sm:w-[255px] lg:w-[282px]"
     >
       <button
         type="button"
         onClick={onDetails}
-        className="block w-full overflow-hidden rounded-xl bg-[#151515] text-left shadow-lg"
+        className="block w-full overflow-hidden rounded-2xl border border-white/[0.05] bg-[#151515] text-left shadow-xl shadow-black/20"
       >
         <div className="relative aspect-video overflow-hidden">
           <img
             src={item.thumbnailUrl || item.backdropUrl || item.posterUrl}
             alt={item.title}
             loading="lazy"
-            className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.06]"
+            className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.055]"
           />
 
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/10 opacity-50 transition group-hover:opacity-90" />
+          <div className="absolute inset-0 bg-[linear-gradient(to_top,rgba(0,0,0,.92),rgba(0,0,0,.08)_62%,rgba(0,0,0,.16))] opacity-65 transition group-hover:opacity-95" />
 
           {item.badge && (
             <span className="absolute left-3 top-3 rounded-md bg-[#FFD900] px-2 py-1 text-[9px] font-black uppercase tracking-wide text-black">
@@ -49,7 +51,7 @@ export default function ContentCard({
         </div>
       </button>
 
-      <div className="mt-2.5">
+      <div className="mt-2.5 px-0.5">
         <h3 className="truncate font-display text-sm font-bold text-white">
           {item.title}
         </h3>
@@ -59,18 +61,21 @@ export default function ContentCard({
               {item.matchScore}% Match
             </span>
           )}
-          <span>{item.year}</span>
+          {item.year && <span>{item.year}</span>}
           <span>{item.maturityRating}+</span>
         </div>
       </div>
 
-      <div className="pointer-events-none absolute left-0 right-0 top-[calc(100%-44px)] z-30 hidden rounded-xl border border-white/10 bg-[#101010]/98 p-4 opacity-0 shadow-2xl backdrop-blur-xl transition duration-200 group-hover:pointer-events-auto group-hover:opacity-100 lg:block">
+      <div className="pointer-events-none absolute left-0 right-0 top-[calc(100%-44px)] z-30 hidden rounded-2xl border border-white/10 bg-[#101010]/98 p-4 opacity-0 shadow-2xl backdrop-blur-xl transition duration-200 group-hover:pointer-events-auto group-hover:opacity-100 lg:block">
         <div className="flex items-center gap-2">
           <CircleButton primary onClick={onPlay} label="Play">
             <Play size={14} fill="currentColor" />
           </CircleButton>
 
-          <CircleButton onClick={onAdd} label={item.inMyList ? "Remove from My List" : "Add to My List"}>
+          <CircleButton
+            onClick={onAdd}
+            label={item.inMyList ? "Remove from My List" : "Add to My List"}
+          >
             {item.inMyList ? <Check size={14} /> : <Plus size={14} />}
           </CircleButton>
 
@@ -78,7 +83,15 @@ export default function ContentCard({
             <ThumbsUp size={14} />
           </CircleButton>
 
-          <CircleButton onClick={onDetails} label="More info" className="ml-auto">
+          <CircleButton onClick={onDownload} label="Download">
+            <Download size={14} />
+          </CircleButton>
+
+          <CircleButton
+            onClick={onDetails}
+            label="More info"
+            className="ml-auto"
+          >
             <Info size={14} />
           </CircleButton>
         </div>
@@ -93,9 +106,9 @@ export default function ContentCard({
               {item.matchScore}% Match
             </span>
           )}
-          <span>{item.year}</span>
+          {item.year && <span>{item.year}</span>}
           <span>{item.maturityRating}+</span>
-          <span>{item.quality}</span>
+          {item.quality && <span>{item.quality}</span>}
         </div>
 
         <p className="mt-2 truncate text-xs text-[#747474]">
