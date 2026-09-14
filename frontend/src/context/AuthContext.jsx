@@ -24,6 +24,12 @@ import {
   ensureUserDocument,
 } from "@/services/userService";
 
+import {
+  clearBackendSession,
+  ensureBackendSession,
+  hasBackendSession,
+} from "@/services/backendAuthService";
+
 export const AuthContext =
   createContext(null);
 
@@ -36,6 +42,39 @@ export function AuthProvider({
   const [initializing, setInitializing] =
     useState(true);
 
+  const [
+    backendReady,
+    setBackendReady,
+  ] = useState(
+    hasBackendSession()
+  );
+
+  async function connectBackend({
+    email,
+    password,
+  }) {
+    try {
+      await ensureBackendSession({
+        email,
+        password,
+        createIfMissing: true,
+      });
+
+      setBackendReady(true);
+      return true;
+    } catch (error) {
+      setBackendReady(false);
+
+      console.warn(
+        "Firebase sign-in succeeded, but the Node/MySQL API session could not be established:",
+        error.response?.data?.message ||
+          error.message
+      );
+
+      return false;
+    }
+  }
+
   useEffect(() => {
     const unsubscribe =
       onAuthStateChanged(
@@ -46,6 +85,9 @@ export function AuthProvider({
               await ensureUserDocument(
                 firebaseUser
               );
+            } else {
+              clearBackendSession();
+              setBackendReady(false);
             }
 
             setUser(firebaseUser);
@@ -86,6 +128,11 @@ export function AuthProvider({
       credential.user
     );
 
+    await connectBackend({
+      email,
+      password,
+    });
+
     return credential.user;
   }
 
@@ -104,10 +151,18 @@ export function AuthProvider({
       credential.user
     );
 
+    await connectBackend({
+      email,
+      password,
+    });
+
     return credential.user;
   }
 
   async function loginWithGoogle() {
+    clearBackendSession();
+    setBackendReady(false);
+
     const credential =
       await signInWithPopup(
         auth,
@@ -129,6 +184,8 @@ export function AuthProvider({
   }
 
   async function logout() {
+    clearBackendSession();
+    setBackendReady(false);
     await signOut(auth);
   }
 
@@ -136,6 +193,7 @@ export function AuthProvider({
     () => ({
       user,
       initializing,
+      backendReady,
 
       isAuthenticated:
         Boolean(user),
@@ -149,6 +207,7 @@ export function AuthProvider({
     [
       user,
       initializing,
+      backendReady,
     ]
   );
 
