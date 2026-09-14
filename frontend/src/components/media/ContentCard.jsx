@@ -64,6 +64,18 @@ export default function ContentCard({
           {item.year && <span>{item.year}</span>}
           <span>{item.maturityRating}+</span>
         </div>
+
+        <div className="mt-2 flex items-center gap-2 lg:hidden">
+          <MobileAction onClick={onPlay} label="Play" primary>
+            <Play size={13} fill="currentColor" />
+          </MobileAction>
+          <MobileAction onClick={onDownload} label="Download">
+            <Download size={13} />
+          </MobileAction>
+          <MobileAction onClick={onDetails} label="More info">
+            <Info size={13} />
+          </MobileAction>
+        </div>
       </div>
 
       <div className="pointer-events-none absolute left-0 right-0 top-[calc(100%-44px)] z-30 hidden rounded-2xl border border-white/10 bg-[#101010]/98 p-4 opacity-0 shadow-2xl backdrop-blur-xl transition duration-200 group-hover:pointer-events-auto group-hover:opacity-100 lg:block">
@@ -116,6 +128,30 @@ export default function ContentCard({
         </p>
       </div>
     </motion.article>
+  );
+}
+
+function MobileAction({
+  children,
+  label,
+  primary = false,
+  ...props
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      {...props}
+      className={`flex h-8 items-center justify-center gap-1.5 rounded-lg border px-3 text-[11px] font-bold transition ${
+        primary
+          ? "border-[#FFD900] bg-[#FFD900] text-black"
+          : "border-white/10 bg-[#151515] text-[#B8B8B8] hover:border-[#FFD900]/30 hover:text-[#FFD900]"
+      }`}
+    >
+      {children}
+      <span>{label}</span>
+    </button>
   );
 }
 
