@@ -5,8 +5,9 @@ import {
 } from "react";
 
 import {
-  ArrowLeft,
   AlertCircle,
+  ArrowLeft,
+  Download,
   Loader2,
 } from "lucide-react";
 
@@ -16,12 +17,20 @@ import {
 } from "react-router";
 
 import {
+  toast,
+} from "sonner";
+
+import {
   getTitle,
 } from "@/services/contentService";
 
 import {
   useProfiles,
 } from "@/hooks/useProfiles";
+
+import {
+  downloadMedia,
+} from "@/utils/mediaDownload";
 
 function youtubeEmbedUrl(url) {
   if (!url) return null;
@@ -115,6 +124,16 @@ export default function WatchPage() {
     [item?.videoUrl]
   );
 
+  function download() {
+    const result = downloadMedia(item);
+
+    if (result.ok) {
+      toast.success(result.message);
+    } else {
+      toast.info(result.message);
+    }
+  }
+
   if (loading) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-black text-white">
@@ -146,35 +165,45 @@ export default function WatchPage() {
         <img
           src={item.backdropUrl}
           alt=""
-          className="absolute inset-0 h-full w-full scale-105 object-cover opacity-20 blur-2xl"
+          className="absolute inset-0 h-full w-full scale-105 object-cover opacity-25 blur-2xl"
         />
       )}
 
-      <div className="absolute inset-0 bg-black/75" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_72%_15%,rgba(255,217,0,.08),transparent_22%),rgba(0,0,0,.78)]" />
 
       <div className="relative z-10 flex min-h-screen flex-col">
-        <header className="flex items-center justify-between gap-4 p-4 sm:p-6">
+        <header className="flex items-center justify-between gap-3 p-3 sm:p-6">
           <button
             type="button"
             onClick={() => navigate(-1)}
-            className="flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2 text-sm font-semibold backdrop-blur-md transition hover:bg-white/15"
+            className="flex h-10 items-center gap-2 rounded-xl border border-white/10 bg-black/35 px-3 text-sm font-semibold backdrop-blur-md transition hover:border-[#FFD900]/30 hover:text-[#FFD900] sm:px-4"
           >
             <ArrowLeft size={17} />
-            Back
+            <span className="hidden sm:inline">Back</span>
           </button>
 
-          <div className="min-w-0 text-right">
+          <div className="min-w-0 flex-1 px-2 text-center sm:px-4">
             <p className="truncate font-display text-sm font-bold sm:text-base">
               {item.title}
             </p>
-            <p className="mt-0.5 text-xs text-[#777]">
+            <p className="mt-0.5 hidden text-xs text-[#777] sm:block">
               {item.runtimeLabel || "24/7Box"}
             </p>
           </div>
+
+          <button
+            type="button"
+            onClick={download}
+            className="flex h-10 items-center gap-2 rounded-xl border border-white/10 bg-black/35 px-3 text-sm font-semibold text-white backdrop-blur-md transition hover:border-[#FFD900]/35 hover:bg-[#FFD900]/10 hover:text-[#FFD900] sm:px-4"
+            aria-label="Download movie"
+          >
+            <Download size={17} />
+            <span className="hidden sm:inline">Download</span>
+          </button>
         </header>
 
-        <section className="flex flex-1 items-center justify-center px-3 pb-7 sm:px-6">
-          <div className="w-full max-w-6xl overflow-hidden rounded-2xl border border-white/10 bg-[#050505] shadow-2xl shadow-black">
+        <section className="flex flex-1 items-center justify-center px-2 pb-5 sm:px-6 sm:pb-7">
+          <div className="w-full max-w-6xl overflow-hidden rounded-xl border border-white/10 bg-[#050505] shadow-2xl shadow-black sm:rounded-2xl">
             {item.videoUrl ? (
               embedUrl ? (
                 <div className="aspect-video w-full">
@@ -232,18 +261,15 @@ function NoSource({ item }) {
 
       <div className="absolute inset-0 bg-black/55" />
 
-      <div className="relative flex h-full items-center justify-center p-8 text-center">
+      <div className="relative flex h-full items-center justify-center p-6 text-center sm:p-8">
         <div className="max-w-md">
-          <AlertCircle className="mx-auto size-10 text-[#FFD900]" />
-          <h2 className="mt-4 font-display text-2xl font-bold">
+          <AlertCircle className="mx-auto size-9 text-[#FFD900] sm:size-10" />
+          <h2 className="mt-4 font-display text-xl font-bold sm:text-2xl">
             Video not linked yet
           </h2>
-          <p className="mt-2 text-sm leading-6 text-[#aaa]">
-            The API returned this movie and its artwork, but
-            <code className="mx-1 rounded bg-white/10 px-1.5 py-0.5 text-[#FFD900]">
-              videoUrl
-            </code>
-            is currently null.
+          <p className="mt-2 text-xs leading-5 text-[#aaa] sm:text-sm sm:leading-6">
+            This movie is available in the catalog, but its video source has not
+            been linked by the backend yet.
           </p>
         </div>
       </div>
