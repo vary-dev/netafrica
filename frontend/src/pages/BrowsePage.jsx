@@ -6,7 +6,10 @@ import {
 
 import {
   AlertCircle,
+  KeyRound,
+  Loader2,
   RefreshCcw,
+  Server,
 } from "lucide-react";
 
 import {
@@ -31,8 +34,16 @@ import {
 } from "@/components/ui/button";
 
 import {
+  Input,
+} from "@/components/ui/input";
+
+import {
   Skeleton,
 } from "@/components/ui/skeleton";
+
+import {
+  useAuth,
+} from "@/hooks/useAuth";
 
 import {
   useProfiles,
@@ -44,35 +55,81 @@ import {
   toggleMyList,
 } from "@/services/contentService";
 
+import {
+  getBackendErrorMessage,
+} from "@/services/backendAuthService";
+
+function describeCatalogError(error) {
+  const status = error?.response?.status;
+
+  if (status === 502) {
+    return {
+      title: "The Node API is offline",
+      message:
+        "Vite could not reach the backend on port 5000. The new dev command starts it automatically, or you can run node server.js from the backend folder.",
+    };
+  }
+
+  if (status === 401) {
+    return {
+      title: "Your API session expired",
+      message:
+        "Reconnect with your account password below to obtain a fresh JWT from Nganji's backend.",
+    };
+  }
+
+  if (status === 404) {
+    return {
+      title: "The movie route is not in this backend checkout",
+      message:
+        "The API is reachable, but /api/content/movies is missing. Pull the backend version that implements the content routes from Nganji before retrying.",
+    };
+  }
+
+  return {
+    title: "Streaming catalog could not load",
+    message: getBackendErrorMessage(error),
+  };
+}
+
 export default function BrowsePage() {
-  const navigate =
-    useNavigate();
+  const navigate = useNavigate();
+
+  const {
+    user,
+    backendReady,
+    backendConnecting,
+    backendError,
+    connectBackend,
+    refreshBackendState,
+  } = useAuth();
 
   const {
     currentProfile,
   } = useProfiles();
 
-  const [feed, setFeed] =
-    useState(null);
+  const [feed, setFeed] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [catalogError, setCatalogError] = useState(null);
+  const [password, setPassword] = useState("");
 
-  const [loading, setLoading] =
-    useState(true);
-
-  const [error, setError] =
-    useState("");
-
-  const loadFeed =
-    useCallback(async () => {
+  const loadFeed = useCallback(
+    async (force = false) => {
       if (!currentProfile) return;
 
+      if (!backendReady && !force) {
+        setLoading(false);
+        setFeed(null);
+        setCatalogError(null);
+        return;
+      }
+
       setLoading(true);
-      setError("");
+      setCatalogError(null);
 
       try {
         setFeed(
-          await getHomeFeed(
-            currentProfile
-          )
+          await getHomeFeed(currentProfile)
         );
       } catch (requestError) {
         console.error(
@@ -80,19 +137,49 @@ export default function BrowsePage() {
           requestError
         );
 
-        setError(
-          requestError.response?.data?.message ||
-            requestError.message ||
-            "Unable to load the movie catalog."
+        if (requestError.response?.status === 401) {
+          refreshBackendState();
+        }
+
+        setCatalogError(
+          describeCatalogError(requestError)
         );
       } finally {
         setLoading(false);
       }
-    }, [currentProfile]);
+    },
+    [
+      currentProfile,
+      backendReady,
+      refreshBackendState,
+    ]
+  );
 
   useEffect(() => {
     loadFeed();
   }, [loadFeed]);
+
+  async function handleBackendConnect(event) {
+    event.preventDefault();
+
+    if (!password) {
+      toast.error("Enter your account password first.");
+      return;
+    }
+
+    try {
+      await connectBackend({
+        email: user?.email,
+        password,
+      });
+
+      setPassword("");
+      toast.success("Node/MySQL API connected. JWT session is ready.");
+      await loadFeed(true);
+    } catch (error) {
+      toast.error(error.message);
+    }
+  }
 
   function openDetails(item) {
     navigate(`/title/${item.slug}`);
@@ -140,7 +227,22 @@ export default function BrowsePage() {
     );
   }
 
-  if (error) {
+  if (!backendReady) {
+    return (
+      <AppShell>
+        <BackendConnectionCard
+          email={user?.email}
+          password={password}
+          setPassword={setPassword}
+          connecting={backendConnecting}
+          message={backendError}
+          onSubmit={handleBackendConnect}
+        />
+      </AppShell>
+    );
+  }
+
+  if (catalogError) {
     return (
       <AppShell>
         <section className="box-container flex min-h-[78vh] items-center justify-center pt-24">
@@ -150,21 +252,15 @@ export default function BrowsePage() {
             </div>
 
             <h1 className="mt-5 font-display text-3xl font-bold">
-              Streaming catalog isn't connected yet
+              {catalogError.title}
             </h1>
 
             <p className="mt-3 text-sm leading-6 text-[#8b8b8b]">
-              {error}
-            </p>
-
-            <p className="mt-3 text-xs leading-5 text-[#666]">
-              For this backend version, sign out and sign in once with email and
-              password so 24/7Box can create the temporary Node/MySQL JWT session.
-              Google-only login cannot use Nganji's current JWT middleware yet.
+              {catalogError.message}
             </p>
 
             <Button
-              onClick={loadFeed}
+              onClick={() => loadFeed(true)}
               className="mt-6 h-11 rounded-xl bg-[#FFD900] px-5 font-bold text-black hover:bg-[#FFE347]"
             >
               <RefreshCcw className="mr-2 size-4" />
@@ -217,6 +313,98 @@ export default function BrowsePage() {
         ))}
       </div>
     </AppShell>
+  );
+}
+
+function BackendConnectionCard({
+  email,
+  password,
+  setPassword,
+  connecting,
+  message,
+  onSubmit,
+}) {
+  return (
+    <section className="box-container flex min-h-[78vh] items-center justify-center pt-24">
+      <div className="w-full max-w-lg rounded-3xl border border-white/10 bg-[#101010] p-7 shadow-2xl sm:p-9">
+        <div className="flex size-12 items-center justify-center rounded-2xl bg-[#FFD900]/10 text-[#FFD900]">
+          <Server size={22} />
+        </div>
+
+        <p className="mt-5 text-xs font-black uppercase tracking-[0.2em] text-[#FFD900]">
+          NODE + MYSQL
+        </p>
+
+        <h1 className="mt-2 font-display text-3xl font-bold tracking-[-0.035em]">
+          Connect your streaming API
+        </h1>
+
+        <p className="mt-3 text-sm leading-6 text-[#8b8b8b]">
+          Firebase already knows who you are. Enter the same account password once
+          so the frontend can request Nganji's temporary JWT and load the real movie
+          catalog. The password is sent to the local Node API and is not stored by
+          the frontend.
+        </p>
+
+        {message && (
+          <div className="mt-5 rounded-xl border border-[#FFD900]/15 bg-[#FFD900]/5 px-4 py-3 text-xs leading-5 text-[#c8b968]">
+            {message}
+          </div>
+        )}
+
+        <form onSubmit={onSubmit} className="mt-6 space-y-4">
+          <div>
+            <p className="mb-2 text-xs font-semibold text-[#747474]">Account</p>
+            <div className="rounded-xl border border-white/10 bg-[#151515] px-4 py-3 text-sm text-[#B8B8B8]">
+              {email || "Firebase account"}
+            </div>
+          </div>
+
+          <div>
+            <label
+              htmlFor="backend-password"
+              className="mb-2 block text-xs font-semibold text-[#747474]"
+            >
+              Account password
+            </label>
+
+            <div className="relative">
+              <KeyRound
+                size={16}
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-[#666]"
+              />
+              <Input
+                id="backend-password"
+                type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                autoComplete="current-password"
+                placeholder="Enter password to request backend JWT"
+                className="h-12 rounded-xl border-white/10 bg-[#151515] pl-11 text-white focus-visible:border-[#FFD900] focus-visible:ring-[#FFD900]/20"
+              />
+            </div>
+          </div>
+
+          <Button
+            type="submit"
+            disabled={connecting || !password}
+            className="h-12 w-full rounded-xl bg-[#FFD900] font-extrabold text-black hover:bg-[#FFE347]"
+          >
+            {connecting ? (
+              <>
+                <Loader2 className="mr-2 size-4 animate-spin" />
+                Connecting API...
+              </>
+            ) : (
+              <>
+                <KeyRound className="mr-2 size-4" />
+                Get backend JWT
+              </>
+            )}
+          </Button>
+        </form>
+      </div>
+    </section>
   );
 }
 
