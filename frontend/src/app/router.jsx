@@ -14,6 +14,7 @@ import MyListPage from "@/pages/MyListPage";
 import SearchPage from "@/pages/SearchPage";
 import SettingsPage from "@/pages/SettingsPage";
 import DetailsPage from "@/pages/DetailsPage";
+import WatchPage from "@/pages/WatchPage";
 
 function LoadingScreen() {
   return (
@@ -116,6 +117,14 @@ export const router = createBrowserRouter([
     element: (
       <ProtectedProfilePage>
         <DetailsPage />
+      </ProtectedProfilePage>
+    ),
+  },
+  {
+    path: "/watch/:slug",
+    element: (
+      <ProtectedProfilePage>
+        <WatchPage />
       </ProtectedProfilePage>
     ),
   },
