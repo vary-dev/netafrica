@@ -11,8 +11,43 @@ const authClient = axios.create({
   },
 });
 
+function decodeJwtPayload(token) {
+  try {
+    const payload = token.split(".")[1];
+    if (!payload) return null;
+
+    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const decoded = decodeURIComponent(
+      atob(normalized)
+        .split("")
+        .map((char) => `%${char.charCodeAt(0).toString(16).padStart(2, "0")}`)
+        .join("")
+    );
+
+    return JSON.parse(decoded);
+  } catch {
+    return null;
+  }
+}
+
+function isExpired(token) {
+  const payload = decodeJwtPayload(token);
+  if (!payload?.exp) return false;
+
+  return payload.exp * 1000 <= Date.now();
+}
+
 export function getBackendToken() {
-  return localStorage.getItem(BACKEND_TOKEN_KEY);
+  const token = localStorage.getItem(BACKEND_TOKEN_KEY);
+
+  if (!token) return null;
+
+  if (isExpired(token)) {
+    localStorage.removeItem(BACKEND_TOKEN_KEY);
+    return null;
+  }
+
+  return token;
 }
 
 export function hasBackendSession() {
@@ -25,11 +60,38 @@ export function clearBackendSession() {
 
 function saveBackendToken(token) {
   if (!token) {
-    throw new Error("The backend login response did not contain a token.");
+    throw new Error("The backend login response did not contain a JWT token.");
   }
 
   localStorage.setItem(BACKEND_TOKEN_KEY, token);
   return token;
+}
+
+export function getBackendErrorMessage(error) {
+  const status = error?.response?.status;
+  const backendMessage = error?.response?.data?.message;
+
+  if (status === 502) {
+    return "The Node API is not reachable from Vite. Start the local backend on port 5000, then retry.";
+  }
+
+  if (status === 401) {
+    return backendMessage || "The Node API rejected these account credentials.";
+  }
+
+  if (status === 404) {
+    return backendMessage || "The requested Node API route is not available in this backend version.";
+  }
+
+  if (status >= 500) {
+    return backendMessage || "The Node/MySQL API returned a server error. Check the backend terminal and MySQL connection.";
+  }
+
+  if (error?.code === "ERR_NETWORK" || !error?.response) {
+    return "The browser could not reach the Node API. Make sure the backend is running on port 5000.";
+  }
+
+  return backendMessage || error?.message || "Unable to connect to the Node/MySQL API.";
 }
 
 export async function loginBackend({ email, password }) {
@@ -48,13 +110,39 @@ export async function registerBackend({ email, password }) {
   });
 }
 
+export async function verifyBackendSession(token = getBackendToken()) {
+  if (!token) return false;
+
+  try {
+    await authClient.get("/protected", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    return true;
+  } catch (error) {
+    if (error.response?.status === 401) {
+      clearBackendSession();
+    }
+
+    throw error;
+  }
+}
+
 export async function ensureBackendSession({
   email,
   password,
   createIfMissing = true,
 }) {
+  if (!email || !password) {
+    throw new Error("Email and password are required to connect the Node API.");
+  }
+
+  let token;
+
   try {
-    return await loginBackend({ email, password });
+    token = await loginBackend({ email, password });
   } catch (loginError) {
     const status = loginError.response?.status;
 
@@ -70,6 +158,9 @@ export async function ensureBackendSession({
       }
     }
 
-    return loginBackend({ email, password });
+    token = await loginBackend({ email, password });
   }
+
+  await verifyBackendSession(token);
+  return token;
 }
