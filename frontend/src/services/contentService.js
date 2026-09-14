@@ -1,12 +1,11 @@
 import apiClient from "@/services/apiClient";
-import {
-  buildDemoHome,
-  catalogForProfile,
-  demoCatalog,
-  sortForProfile,
-} from "@/data/demoCatalog";
 
-const useBackend = import.meta.env.VITE_USE_BACKEND === "true";
+const PROFILE_LIMITS = {
+  KIDS_7: 7,
+  TEEN_13: 13,
+  TEEN_16: 16,
+  "18_PLUS": 18,
+};
 
 function storageKey(profileId, key) {
   return `247box:${profileId || "guest"}:${key}`;
@@ -14,14 +13,92 @@ function storageKey(profileId, key) {
 
 function readIds(profileId, key) {
   try {
-    return JSON.parse(localStorage.getItem(storageKey(profileId, key)) || "[]");
+    return JSON.parse(
+      localStorage.getItem(storageKey(profileId, key)) || "[]"
+    );
   } catch {
     return [];
   }
 }
 
 function writeIds(profileId, key, values) {
-  localStorage.setItem(storageKey(profileId, key), JSON.stringify(values));
+  localStorage.setItem(
+    storageKey(profileId, key),
+    JSON.stringify(values)
+  );
+}
+
+function normalizeGenres(genres) {
+  if (Array.isArray(genres)) {
+    return genres.filter(Boolean);
+  }
+
+  if (typeof genres === "string") {
+    return genres
+      .split(",")
+      .map((genre) => genre.trim())
+      .filter(Boolean);
+  }
+
+  return [];
+}
+
+function maturityNumber(value) {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) ? parsed : 18;
+}
+
+function profileMaturityLimit(profile) {
+  if (profile?.isKids || profile?.profileType === "kids") {
+    return 7;
+  }
+
+  if (profile?.ageGroup && PROFILE_LIMITS[profile.ageGroup]) {
+    return PROFILE_LIMITS[profile.ageGroup];
+  }
+
+  return maturityNumber(profile?.maturityRating);
+}
+
+export function normalizeContent(item) {
+  if (!item) return null;
+
+  const slug = item.slug || item.movieId || String(item.id);
+
+  return {
+    ...item,
+    id: item.id ?? item.movieId ?? slug,
+    slug,
+    movieId: item.movieId ?? slug,
+    type:
+      item.type === "my_list" || item.type === "recently_watched"
+        ? "MOVIE"
+        : item.type || "MOVIE",
+    title: item.title || "Untitled",
+    eyebrow: item.eyebrow || "24/7BOX",
+    description: item.description || "",
+    year: item.year || null,
+    maturityRating: maturityNumber(item.maturityRating),
+    runtimeLabel: item.runtimeLabel || item.duration || "",
+    duration: item.duration || item.runtimeLabel || "",
+    genres: normalizeGenres(item.genres),
+    posterUrl: item.posterUrl || item.poster || "",
+    poster: item.poster || item.posterUrl || "",
+    backdropUrl:
+      item.backdropUrl ||
+      item.backdrop ||
+      item.posterUrl ||
+      item.poster ||
+      "",
+    backdrop:
+      item.backdrop ||
+      item.backdropUrl ||
+      item.poster ||
+      item.posterUrl ||
+      "",
+    videoUrl: item.videoUrl || null,
+    quality: item.quality || "",
+  };
 }
 
 function withLocalState(items, profileId) {
@@ -30,97 +107,148 @@ function withLocalState(items, profileId) {
 
   return items.map((item) => ({
     ...item,
-    inMyList: saved.has(item.id) || item.inMyList,
-    liked: liked.has(item.id) || item.liked,
+    inMyList: saved.has(item.id) || saved.has(item.slug),
+    liked: liked.has(item.id) || liked.has(item.slug),
   }));
 }
 
-export async function getHomeFeed(profile) {
-  if (useBackend) {
-    const response = await apiClient.get(`/profiles/${profile.id}/home`);
-    return response.data.data;
-  }
+function filterForProfile(items, profile) {
+  const max = profileMaturityLimit(profile);
 
-  const feed = buildDemoHome(profile);
+  return items.filter(
+    (item) => maturityNumber(item.maturityRating) <= max
+  );
+}
 
-  return {
-    ...feed,
-    featured: {
-      ...feed.featured,
-      inMyList: withLocalState([feed.featured], profile?.id)[0]?.inMyList,
-    },
-    rows: feed.rows.map((row) => ({
-      ...row,
-      items: withLocalState(row.items, profile?.id),
-    })),
-  };
+function sortForProfile(items, profile) {
+  const preferred = profile?.preferredGenres ?? [];
+
+  return [...items].sort((a, b) => {
+    const aMatches = a.genres.filter((genre) =>
+      preferred.includes(genre)
+    ).length;
+
+    const bMatches = b.genres.filter((genre) =>
+      preferred.includes(genre)
+    ).length;
+
+    if (aMatches !== bMatches) {
+      return bMatches - aMatches;
+    }
+
+    return Number(b.year || 0) - Number(a.year || 0);
+  });
+}
+
+function normalizeMovieList(data, profile) {
+  const list = Array.isArray(data) ? data : [];
+
+  const normalized = list
+    .map(normalizeContent)
+    .filter(Boolean);
+
+  return withLocalState(
+    sortForProfile(
+      filterForProfile(normalized, profile),
+      profile
+    ),
+    profile?.id
+  );
 }
 
 export async function getMovies(profile) {
-  if (useBackend) {
-    const response = await apiClient.get("/content/movies", {
-      params: { profileId: profile?.id },
-    });
-    return response.data.data;
-  }
+  const response = await apiClient.get("/content/movies");
+  const payload = response.data?.data ?? response.data;
 
-  return withLocalState(
-    sortForProfile(
-      catalogForProfile(profile).filter((item) => item.type === "MOVIE"),
-      profile
-    ),
-    profile?.id
-  );
+  return normalizeMovieList(payload, profile);
 }
 
-export async function getSeries(profile) {
-  if (useBackend) {
-    const response = await apiClient.get("/content/series", {
-      params: { profileId: profile?.id },
-    });
-    return response.data.data;
-  }
+export async function getHomeFeed(profile) {
+  // The backend MySQL profile IDs and our Firebase subprofile IDs are not
+  // synchronized yet. For this first integration the home UI is built from
+  // the real /content/movies payload and personalized with Firebase profile
+  // preferences on the client.
+  const movies = await getMovies(profile);
+  const favoriteGenre = profile?.preferredGenres?.[0];
 
-  return withLocalState(
-    sortForProfile(
-      catalogForProfile(profile).filter((item) => item.type === "SERIES"),
-      profile
-    ),
-    profile?.id
+  const featured =
+    (favoriteGenre
+      ? movies.find((item) => item.genres.includes(favoriteGenre))
+      : null) ||
+    movies[0] ||
+    null;
+
+  const favoriteItems = favoriteGenre
+    ? movies.filter((item) => item.genres.includes(favoriteGenre))
+    : [];
+
+  const newest = [...movies].sort(
+    (a, b) => Number(b.year || 0) - Number(a.year || 0)
   );
+
+  const rows = [
+    {
+      id: "recommended",
+      title: `Recommended for ${profile?.name || "You"}`,
+      variant: "standard",
+      items: movies,
+    },
+    favoriteItems.length
+      ? {
+          id: "favorite-genre",
+          title: `Because You Like ${favoriteGenre}`,
+          variant: "standard",
+          items: favoriteItems,
+        }
+      : null,
+    {
+      id: "newest",
+      title: "Fresh on 24/7Box",
+      variant: "standard",
+      items: newest,
+    },
+  ].filter((row) => row && row.items.length > 0);
+
+  return {
+    profile,
+    featured,
+    rows,
+  };
 }
 
 export async function getTitle(slug, profile) {
-  if (useBackend) {
-    const response = await apiClient.get(`/content/${slug}`, {
-      params: { profileId: profile?.id },
-    });
-    return response.data.data;
+  const response = await apiClient.get(
+    `/content/${encodeURIComponent(slug)}`
+  );
+
+  const payload = response.data?.data ?? response.data;
+  const normalized = normalizeContent(payload);
+
+  if (!normalized) {
+    return null;
   }
 
-  const item = catalogForProfile(profile).find((content) => content.slug === slug);
-  if (!item) return null;
+  const allowed = filterForProfile([normalized], profile);
 
-  return withLocalState([item], profile?.id)[0];
+  if (!allowed.length) {
+    return null;
+  }
+
+  return withLocalState(allowed, profile?.id)[0];
 }
 
 export async function searchContent(query, profile) {
-  if (useBackend) {
-    const response = await apiClient.get("/search", {
-      params: {
-        q: query,
-        profileId: profile?.id,
-      },
-    });
+  const normalizedQuery = query.trim().toLowerCase();
 
-    return response.data.data;
+  if (!normalizedQuery) {
+    return [];
   }
 
-  const normalized = query.trim().toLowerCase();
+  // /api/search is not implemented yet, so search the real API movie list
+  // locally until the backend route is added.
+  const movies = await getMovies(profile);
 
-  if (!normalized) return [];
-
-  const results = catalogForProfile(profile).filter((item) => {
+  return movies.filter((item) => {
     const haystack = [
       item.title,
       item.description,
@@ -130,45 +258,29 @@ export async function searchContent(query, profile) {
       .join(" ")
       .toLowerCase();
 
-    return haystack.includes(normalized);
+    return haystack.includes(normalizedQuery);
   });
+}
 
-  return withLocalState(sortForProfile(results, profile), profile?.id);
+export async function getSeries() {
+  // The current backend README explicitly states that series are not built.
+  return [];
 }
 
 export async function getLibrary(profile) {
-  if (useBackend) {
-    const response = await apiClient.get(`/profiles/${profile.id}/library`);
-    return response.data.data;
-  }
-
-  const catalog = withLocalState(catalogForProfile(profile), profile?.id);
+  // My List, likes and progress write endpoints are not built yet. Keep only
+  // lightweight profile-local state; all movie metadata still comes from API.
+  const movies = await getMovies(profile);
 
   return {
-    continueWatching: catalog.filter(
-      (item) => item.progress > 0 && item.progress < 95
-    ),
-    myList: catalog.filter((item) => item.inMyList),
-    liked: catalog.filter((item) => item.liked),
+    continueWatching: [],
+    recentlyWatched: [],
+    myList: movies.filter((item) => item.inMyList),
+    liked: movies.filter((item) => item.liked),
   };
 }
 
 export async function toggleMyList(profile, contentId) {
-  if (useBackend) {
-    const current = await getTitle(
-      demoCatalog.find((item) => item.id === contentId)?.slug || contentId,
-      profile
-    );
-
-    if (current?.inMyList) {
-      await apiClient.delete(`/profiles/${profile.id}/my-list/${contentId}`);
-      return false;
-    }
-
-    await apiClient.post(`/profiles/${profile.id}/my-list/${contentId}`);
-    return true;
-  }
-
   const values = new Set(readIds(profile?.id, "my-list"));
 
   if (values.has(contentId)) {
@@ -183,13 +295,6 @@ export async function toggleMyList(profile, contentId) {
 }
 
 export async function toggleLike(profile, contentId) {
-  if (useBackend) {
-    const response = await apiClient.post(
-      `/profiles/${profile.id}/likes/${contentId}`
-    );
-    return response.data.data;
-  }
-
   const values = new Set(readIds(profile?.id, "liked"));
 
   if (values.has(contentId)) {
