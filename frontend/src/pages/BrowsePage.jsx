@@ -35,6 +35,10 @@ import {
   getBackendErrorMessage,
 } from "@/services/backendAuthService";
 
+import {
+  downloadMedia,
+} from "@/utils/mediaDownload";
+
 export default function BrowsePage() {
   const navigate = useNavigate();
   const { currentProfile } = useProfiles();
@@ -76,6 +80,16 @@ export default function BrowsePage() {
 
   function play(item) {
     navigate(`/watch/${item.slug}`);
+  }
+
+  function download(item) {
+    const result = downloadMedia(item);
+
+    if (result.ok) {
+      toast.success(result.message);
+    } else {
+      toast.info(result.message);
+    }
   }
 
   async function addToList(item) {
@@ -184,6 +198,7 @@ export default function BrowsePage() {
         onPlay={() => play(feed.featured)}
         onMoreInfo={() => openDetails(feed.featured)}
         onAdd={() => addToList(feed.featured)}
+        onDownload={() => download(feed.featured)}
       />
 
       <div className="relative z-20 -mt-4 lg:-mt-8">
@@ -197,6 +212,7 @@ export default function BrowsePage() {
             onPlay={play}
             onAdd={addToList}
             onLike={like}
+            onDownload={download}
           />
         ))}
       </div>
