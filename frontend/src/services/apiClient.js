@@ -8,9 +8,7 @@ import {
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
   timeout: 15000,
-  headers: {
-    "Content-Type": "application/json",
-  },
+  headers: { "Content-Type": "application/json" },
 });
 
 apiClient.interceptors.request.use((config) => {
@@ -23,14 +21,37 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
+function isTokenAuthenticationFailure(error) {
+  if (error.response?.status !== 401) {
+    return false;
+  }
+
+  const message = String(
+    error.response?.data?.message || ""
+  ).toLowerCase();
+
+  return (
+    message.includes("invalid or expired token") ||
+    message.includes("authentication required")
+  );
+}
+
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    // Nganji's POST /profiles also uses 401 for an incorrect parent-account
+    // confirmation password. Do not destroy the real JWT for that case.
+    if (isTokenAuthenticationFailure(error)) {
       clearBackendSession();
 
-      console.warn(
-        "The Node/MySQL API session is missing or expired. Sign in again with email and password."
+      window.dispatchEvent(
+        new CustomEvent("247box:auth-expired", {
+          detail: {
+            message:
+              error.response?.data?.message ||
+              "Your session expired. Please sign in again.",
+          },
+        })
       );
     }
 

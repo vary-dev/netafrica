@@ -5,7 +5,10 @@ import {
 
 import { useAuth } from "@/hooks/useAuth";
 import { useProfiles } from "@/hooks/useProfiles";
+
 import LandingPage from "@/pages/LandingPage";
+import LoginPage from "@/pages/LoginPage";
+import RegisterPage from "@/pages/RegisterPage";
 import ProfilesPage from "@/pages/ProfilesPage";
 import BrowsePage from "@/pages/BrowsePage";
 import MoviesPage from "@/pages/MoviesPage";
@@ -24,21 +27,29 @@ function LoadingScreen() {
   );
 }
 
-function AuthenticatedRoute({ children }) {
-  const { user, initializing } = useAuth();
+function GuestRoute({ children }) {
+  const { isAuthenticated, initializing } = useAuth();
 
   if (initializing) return <LoadingScreen />;
-  if (!user) return <Navigate to="/" replace />;
+  if (isAuthenticated) return <Navigate to="/profiles" replace />;
+
+  return children;
+}
+
+function AuthenticatedRoute({ children }) {
+  const { isAuthenticated, initializing } = useAuth();
+
+  if (initializing) return <LoadingScreen />;
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
 
   return children;
 }
 
 function ProfileRoute({ children }) {
-  const { currentProfile } = useProfiles();
+  const { currentProfile, loading } = useProfiles();
 
-  if (!currentProfile) {
-    return <Navigate to="/profiles" replace />;
-  }
+  if (loading) return <LoadingScreen />;
+  if (!currentProfile) return <Navigate to="/profiles" replace />;
 
   return children;
 }
@@ -52,9 +63,22 @@ function ProtectedProfilePage({ children }) {
 }
 
 export const router = createBrowserRouter([
+  { path: "/", element: <LandingPage /> },
   {
-    path: "/",
-    element: <LandingPage />,
+    path: "/login",
+    element: (
+      <GuestRoute>
+        <LoginPage />
+      </GuestRoute>
+    ),
+  },
+  {
+    path: "/register",
+    element: (
+      <GuestRoute>
+        <RegisterPage />
+      </GuestRoute>
+    ),
   },
   {
     path: "/profiles",
@@ -128,8 +152,5 @@ export const router = createBrowserRouter([
       </ProtectedProfilePage>
     ),
   },
-  {
-    path: "*",
-    element: <Navigate to="/" replace />,
-  },
+  { path: "*", element: <Navigate to="/" replace /> },
 ]);

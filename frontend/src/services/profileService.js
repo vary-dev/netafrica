@@ -1,164 +1,61 @@
+import apiClient from "@/services/apiClient";
 import {
-  collection,
-  deleteDoc,
-  doc,
-  getDocs,
-  orderBy,
-  query,
-  serverTimestamp,
-  setDoc,
-  updateDoc,
-} from "firebase/firestore";
+  hydrateBackendProfile,
+  removeProfilePreferences,
+  saveProfilePreferences,
+} from "@/services/profilePreferences";
 
-import { db } from "@/firebase/firebase";
-
-const PROFILE_SLOTS = [
-  "profile-1",
-  "profile-2",
-  "profile-3",
-  "profile-4",
-];
-
-export async function getProfiles(uid) {
-  const ref = collection(
-    db,
-    "users",
-    uid,
-    "profiles"
-  );
-
-  const q = query(
-    ref,
-    orderBy("createdAt", "asc")
-  );
-
-  const snapshot =
-    await getDocs(q);
-
-  return snapshot.docs.map(
-    (profileDoc) => ({
-      id: profileDoc.id,
-      ...profileDoc.data(),
-    })
-  );
-}
-
-export async function createProfile(
-  uid,
-  profile
-) {
-  const profiles =
-    await getProfiles(uid);
-
-  const existingIds =
-    profiles.map(
-      (item) => item.id
-    );
-
-  const availableSlot =
-    PROFILE_SLOTS.find(
-      (slot) =>
-        !existingIds.includes(slot)
-    );
-
-  if (!availableSlot) {
-    throw new Error(
-      "You already have the maximum of four profiles."
-    );
-  }
-
-  const ref = doc(
-    db,
-    "users",
-    uid,
-    "profiles",
-    availableSlot
-  );
-
-  const document = {
-    ownerId: uid,
-    name: profile.name.trim(),
-    avatarUrl:
-      profile.avatarUrl ?? "",
-    avatarStyle:
-      profile.avatarStyle ?? "yellow",
-    profileType:
-      profile.isKids
-        ? "kids"
-        : profile.profileType ?? "adult",
-    ageGroup:
-      profile.ageGroup ?? "18_PLUS",
-    isKids:
-      Boolean(profile.isKids),
-    maturityRating:
-      profile.maturityRating ??
-      (profile.ageGroup === "KIDS_7"
-        ? "7+"
-        : profile.ageGroup === "TEEN_13"
-          ? "13+"
-          : profile.ageGroup === "TEEN_16"
-            ? "16+"
-            : "18+"),
-    preferredGenres:
-      profile.preferredGenres ?? [],
-    preferredLanguage:
-      profile.preferredLanguage ?? "en",
-    subtitleLanguage:
-      profile.subtitleLanguage ?? "en",
-    autoplayNextEpisode:
-      profile.autoplayNextEpisode ?? true,
-    autoplayPreviews:
-      profile.autoplayPreviews ?? false,
-    createdAt:
-      serverTimestamp(),
-    updatedAt:
-      serverTimestamp(),
-  };
-
-  await setDoc(ref, document);
-
+function extractPreferences(profile) {
   return {
-    id: availableSlot,
-    ...document,
+    ageGroup: profile.ageGroup,
+    isKids: profile.isKids,
+    preferredGenres: profile.preferredGenres,
+    preferredLanguage: profile.preferredLanguage,
+    subtitleLanguage: profile.subtitleLanguage,
+    autoplayNextEpisode: profile.autoplayNextEpisode,
+    autoplayPreviews: profile.autoplayPreviews,
   };
 }
 
-export async function updateProfile(
-  uid,
-  profileId,
-  changes
-) {
-  const ref = doc(
-    db,
-    "users",
-    uid,
-    "profiles",
-    profileId
-  );
+export async function getProfiles() {
+  const response = await apiClient.get("/profiles");
+  const profiles = response.data?.profiles ?? [];
+  return profiles.map(hydrateBackendProfile);
+}
 
-  await updateDoc(ref, {
-    ...changes,
-    updatedAt:
-      serverTimestamp(),
+export async function getProfile(profileId) {
+  const response = await apiClient.get(`/profiles/${profileId}`);
+  return hydrateBackendProfile(response.data?.profile);
+}
+
+export async function createProfile(profile) {
+  const response = await apiClient.post("/profiles", {
+    name: profile.name.trim(),
+    password: profile.password,
+    avatar: profile.avatarUrl || null,
   });
 
+  const profileId = response.data?.profileId;
+
+  if (!profileId) {
+    throw new Error("The backend did not return the new profile id.");
+  }
+
+  saveProfilePreferences(profileId, extractPreferences(profile));
+  return getProfile(profileId);
+}
+
+export async function updateProfilePreferences(profileId, changes) {
+  const preferences = saveProfilePreferences(profileId, changes);
+  const backendProfile = await getProfile(profileId);
+
   return {
-    id: profileId,
-    ...changes,
+    ...backendProfile,
+    ...preferences,
   };
 }
 
-export async function deleteProfile(
-  uid,
-  profileId
-) {
-  await deleteDoc(
-    doc(
-      db,
-      "users",
-      uid,
-      "profiles",
-      profileId
-    )
-  );
+export async function deleteProfile(profileId) {
+  await apiClient.delete(`/profiles/${profileId}`);
+  removeProfilePreferences(profileId);
 }

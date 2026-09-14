@@ -8,131 +8,118 @@ import {
 
 import { useAuth } from "@/hooks/useAuth";
 import {
-  createProfile as createProfileDocument,
+  createProfile as createBackendProfile,
+  deleteProfile as deleteBackendProfile,
+  getProfile,
   getProfiles,
-  updateProfile as updateProfileDocument,
+  updateProfilePreferences,
 } from "@/services/profileService";
 
 export const ProfileContext = createContext(null);
 
-const ACTIVE_PROFILE_KEY = "247box_active_profile";
+const ACTIVE_PROFILE_KEY = "247box_active_profile_id";
 
 export function ProfileProvider({ children }) {
-  const { user } = useAuth();
+  const { account } = useAuth();
+
   const [profiles, setProfiles] = useState([]);
   const [currentProfile, setCurrentProfile] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const loadProfiles = useCallback(async () => {
-    if (!user) {
+    if (!account) {
       setProfiles([]);
       setCurrentProfile(null);
       sessionStorage.removeItem(ACTIVE_PROFILE_KEY);
+      setLoading(false);
       return;
     }
 
     setLoading(true);
 
     try {
-      const result = await getProfiles(user.uid);
+      const result = await getProfiles();
       setProfiles(result);
 
-      const stored = sessionStorage.getItem(ACTIVE_PROFILE_KEY);
+      const storedId = sessionStorage.getItem(ACTIVE_PROFILE_KEY);
 
-      if (!stored) {
+      if (!storedId) {
         setCurrentProfile(null);
         return;
       }
 
-      try {
-        const parsed = JSON.parse(stored);
-        const verified = result.find((profile) => profile.id === parsed?.id);
+      const restored = result.find(
+        (profile) => String(profile.id) === storedId
+      );
 
-        if (verified) {
-          setCurrentProfile(verified);
-          sessionStorage.setItem(
-            ACTIVE_PROFILE_KEY,
-            JSON.stringify(verified)
-          );
-        } else {
-          setCurrentProfile(null);
-          sessionStorage.removeItem(ACTIVE_PROFILE_KEY);
-        }
-      } catch {
-        setCurrentProfile(null);
+      if (restored) {
+        setCurrentProfile(restored);
+      } else {
         sessionStorage.removeItem(ACTIVE_PROFILE_KEY);
+        setCurrentProfile(null);
       }
     } catch (error) {
-      console.error("Unable to load profiles:", error);
+      console.error("Unable to load backend profiles:", error);
       setProfiles([]);
       setCurrentProfile(null);
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [account]);
 
   useEffect(() => {
     loadProfiles();
   }, [loadProfiles]);
 
   async function createProfile(profile) {
-    if (!user) throw new Error("Authentication required.");
+    if (!account) throw new Error("Authentication required.");
+    if (profiles.length >= 4) {
+      throw new Error("This account already has four profiles.");
+    }
 
-    const created = await createProfileDocument(user.uid, profile);
+    const created = await createBackendProfile(profile);
     await loadProfiles();
     return created;
   }
 
+  async function selectProfile(profile) {
+    if (!profile?.id) throw new Error("Invalid profile.");
+
+    const verified = await getProfile(profile.id);
+
+    setCurrentProfile(verified);
+    sessionStorage.setItem(ACTIVE_PROFILE_KEY, String(verified.id));
+    return verified;
+  }
+
   async function updateProfile(profileId, changes) {
-    if (!user) throw new Error("Authentication required.");
-
-    const updated = await updateProfileDocument(
-      user.uid,
-      profileId,
-      changes
-    );
-
-    const nextChanges = {
-      ...updated,
-      ...changes,
-    };
+    const updated = await updateProfilePreferences(profileId, changes);
 
     setProfiles((current) =>
       current.map((profile) =>
-        profile.id === profileId
-          ? { ...profile, ...nextChanges }
-          : profile
+        profile.id === profileId ? updated : profile
       )
     );
 
     if (currentProfile?.id === profileId) {
-      const nextProfile = {
-        ...currentProfile,
-        ...nextChanges,
-      };
-
-      setCurrentProfile(nextProfile);
-      sessionStorage.setItem(
-        ACTIVE_PROFILE_KEY,
-        JSON.stringify(nextProfile)
-      );
+      setCurrentProfile(updated);
     }
 
-    return nextChanges;
+    return updated;
   }
 
-  function selectProfile(profile) {
-    const verified = profiles.find((item) => item.id === profile?.id);
-
-    if (!verified) {
-      throw new Error("That profile is not available for this account.");
+  async function deleteProfile(profileId) {
+    if (profiles.length <= 1) {
+      throw new Error("Keep at least one profile on the account.");
     }
 
-    setCurrentProfile(verified);
-    sessionStorage.setItem(
-      ACTIVE_PROFILE_KEY,
-      JSON.stringify(verified)
-    );
+    await deleteBackendProfile(profileId);
+
+    if (currentProfile?.id === profileId) {
+      clearProfile();
+    }
+
+    await loadProfiles();
   }
 
   function clearProfile() {
@@ -147,8 +134,9 @@ export function ProfileProvider({ children }) {
       loading,
       refreshProfiles: loadProfiles,
       createProfile,
-      updateProfile,
       selectProfile,
+      updateProfile,
+      deleteProfile,
       clearProfile,
     }),
     [profiles, currentProfile, loading, loadProfiles]

@@ -5,8 +5,13 @@ import {
   Camera,
   Check,
   ChevronRight,
+  Languages,
   Loader2,
+  LockKeyhole,
+  Sparkles,
+  UserRound,
 } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
@@ -24,32 +29,26 @@ const GENRES = [
 ];
 
 const AGE_GROUPS = [
-  {
-    value: "KIDS_7",
-    title: "Kids",
-    subtitle: "A simplified catalog for younger viewers.",
-  },
-  {
-    value: "TEEN_13",
-    title: "13+",
-    subtitle: "Teen-friendly movies and series.",
-  },
-  {
-    value: "TEEN_16",
-    title: "16+",
-    subtitle: "A broader catalog with mature themes.",
-  },
-  {
-    value: "18_PLUS",
-    title: "18+",
-    subtitle: "The full catalog available to adult profiles.",
-  },
+  { value: "KIDS_7", title: "Kids", subtitle: "Designed for younger viewers." },
+  { value: "TEEN_13", title: "13+", subtitle: "Teen-friendly discovery." },
+  { value: "TEEN_16", title: "16+", subtitle: "A broader catalog." },
+  { value: "18_PLUS", title: "18+", subtitle: "Full adult catalog." },
 ];
 
-const TOTAL_STEPS = 6;
+const STEPS = [
+  { number: 1, label: "Identity", icon: UserRound },
+  { number: 2, label: "Avatar", icon: Camera },
+  { number: 3, label: "Taste", icon: Sparkles },
+  { number: 4, label: "Language", icon: Languages },
+  { number: 5, label: "Confirm", icon: LockKeyhole },
+];
 
-export default function ProfileWizard({ onCancel, onComplete }) {
+export default function ProfileWizard({
+  onCancel,
+  onComplete,
+}) {
   const fileRef = useRef(null);
+
   const [step, setStep] = useState(1);
   const [uploading, setUploading] = useState(false);
   const [avatarError, setAvatarError] = useState("");
@@ -64,6 +63,7 @@ export default function ProfileWizard({ onCancel, onComplete }) {
     subtitleLanguage: "en",
     autoplayNextEpisode: true,
     autoplayPreviews: false,
+    password: "",
   });
 
   function update(values) {
@@ -71,7 +71,7 @@ export default function ProfileWizard({ onCancel, onComplete }) {
   }
 
   function next() {
-    setStep((current) => Math.min(current + 1, TOTAL_STEPS));
+    setStep((current) => Math.min(current + 1, STEPS.length));
   }
 
   function back() {
@@ -110,302 +110,351 @@ export default function ProfileWizard({ onCancel, onComplete }) {
   }
 
   return (
-    <div className="mx-auto w-full max-w-2xl">
-      <div className="mb-8">
-        <div className="mb-3 flex justify-between text-xs font-bold uppercase tracking-[0.16em] text-[#747474]">
-          <span>Personalize profile</span>
-          <span>
-            {step}/{TOTAL_STEPS}
-          </span>
+    <div className="mx-auto grid w-full max-w-5xl overflow-hidden rounded-[28px] border border-white/[0.08] bg-[#0d0d0d] shadow-2xl lg:grid-cols-[260px_1fr]">
+      <aside className="border-b border-white/[0.06] bg-[#101010] p-6 lg:border-b-0 lg:border-r lg:p-8">
+        <p className="text-xs font-black uppercase tracking-[0.2em] text-[#FFD900]">
+          NEW PROFILE
+        </p>
+
+        <h2 className="mt-3 font-display text-2xl font-bold">
+          Make it personal.
+        </h2>
+
+        <p className="mt-2 text-xs leading-5 text-[#666]">
+          The backend stores the profile identity. Viewing preferences stay attached
+          to this profile in the frontend until Nganji adds those columns.
+        </p>
+
+        <div className="mt-7 hidden space-y-2 lg:block">
+          {STEPS.map((item) => {
+            const Icon = item.icon;
+            const active = item.number === step;
+            const complete = item.number < step;
+
+            return (
+              <div
+                key={item.number}
+                className={`flex items-center gap-3 rounded-xl border px-3 py-3 transition ${
+                  active
+                    ? "border-[#FFD900]/25 bg-[#FFD900]/8"
+                    : "border-transparent"
+                }`}
+              >
+                <div
+                  className={`flex size-8 items-center justify-center rounded-lg ${
+                    active || complete
+                      ? "bg-[#FFD900] text-black"
+                      : "bg-white/[0.05] text-[#555]"
+                  }`}
+                >
+                  {complete ? <Check size={15} /> : <Icon size={15} />}
+                </div>
+
+                <div>
+                  <p
+                    className={`text-xs font-bold ${
+                      active ? "text-white" : "text-[#666]"
+                    }`}
+                  >
+                    {item.label}
+                  </p>
+                  <p className="text-[10px] text-[#444]">
+                    Step {item.number}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
         </div>
 
         <Progress
-          value={(step / TOTAL_STEPS) * 100}
-          className="h-1 bg-[#1c1c1c] [&>div]:bg-[#FFD900]"
+          value={(step / STEPS.length) * 100}
+          className="mt-6 h-1 bg-white/[0.06] [&>div]:bg-[#FFD900]"
         />
-      </div>
 
-      <button
-        type="button"
-        onClick={back}
-        className="mb-8 flex items-center gap-2 text-sm font-semibold text-[#747474] transition hover:text-white"
-      >
-        <ArrowLeft size={16} />
-        Back
-      </button>
+        <p className="mt-2 text-[10px] font-bold uppercase tracking-widest text-[#555]">
+          {step} of {STEPS.length}
+        </p>
+      </aside>
 
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={step}
-          initial={{ opacity: 0, x: 28 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -28 }}
-          transition={{ duration: 0.22 }}
+      <section className="min-h-[610px] p-6 sm:p-9 lg:p-12">
+        <button
+          type="button"
+          onClick={back}
+          className="mb-8 flex items-center gap-2 text-sm font-semibold text-[#666] transition hover:text-white"
         >
-          {step === 1 && (
-            <section>
-              <StepTitle
-                eyebrow="PROFILE"
-                title="Who's watching?"
-                description="Each viewer gets independent recommendations, history, My List and settings."
-              />
+          <ArrowLeft size={16} />
+          {step === 1 ? "Cancel" : "Back"}
+        </button>
 
-              <Input
-                autoFocus
-                value={data.name}
-                onChange={(event) => update({ name: event.target.value })}
-                placeholder="Profile name"
-                maxLength={32}
-                className="mt-8 h-14 rounded-xl border-white/10 bg-[#151515] focus-visible:border-[#FFD900] focus-visible:ring-[#FFD900]/20"
-              />
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={step}
+            initial={{ opacity: 0, x: 24 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -24 }}
+            transition={{ duration: 0.2 }}
+          >
+            {step === 1 && (
+              <>
+                <StepTitle
+                  eyebrow="IDENTITY"
+                  title="Who's watching?"
+                  description="Choose the name shown when this viewer selects their profile."
+                />
 
-              <Button
-                disabled={!data.name.trim()}
-                onClick={next}
-                className="mt-6 h-12 w-full rounded-xl bg-[#FFD900] font-extrabold text-black hover:bg-[#FFE347]"
-              >
-                Continue
-              </Button>
-            </section>
-          )}
+                <Input
+                  autoFocus
+                  value={data.name}
+                  onChange={(event) => update({ name: event.target.value })}
+                  maxLength={32}
+                  placeholder="Profile name"
+                  className="mt-8 h-14 rounded-xl border-white/10 bg-[#151515] text-base focus-visible:border-[#FFD900] focus-visible:ring-[#FFD900]/20"
+                />
 
-          {step === 2 && (
-            <section>
-              <StepTitle
-                eyebrow="AGE & CONTENT"
-                title="Choose a viewing level"
-                description="This keeps the catalog and recommendations appropriate for this profile."
-              />
+                <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                  {AGE_GROUPS.map((option) => {
+                    const active = data.ageGroup === option.value;
 
-              <div className="mt-8 grid gap-3 sm:grid-cols-2">
-                {AGE_GROUPS.map((option) => {
-                  const active = data.ageGroup === option.value;
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() =>
+                          update({
+                            ageGroup: option.value,
+                            isKids: option.value === "KIDS_7",
+                          })
+                        }
+                        className={`rounded-xl border p-4 text-left transition ${
+                          active
+                            ? "border-[#FFD900]/35 bg-[#FFD900]/8"
+                            : "border-white/[0.07] bg-[#121212] hover:border-white/15"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <p className="font-bold">{option.title}</p>
+                            <p className="mt-1 text-xs text-[#666]">
+                              {option.subtitle}
+                            </p>
+                          </div>
 
-                  return (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() =>
-                        update({
-                          ageGroup: option.value,
-                          isKids: option.value === "KIDS_7",
-                        })
-                      }
-                      className={`rounded-2xl border p-5 text-left transition ${
-                        active
-                          ? "border-[#FFD900]/50 bg-[#FFD900]/10"
-                          : "border-white/10 bg-[#101010] hover:border-white/20"
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <p className="font-display text-lg font-bold">
-                            {option.title}
-                          </p>
-                          <p className="mt-2 text-sm leading-6 text-[#747474]">
-                            {option.subtitle}
-                          </p>
+                          {active && (
+                            <Check size={17} className="text-[#FFD900]" />
+                          )}
                         </div>
-                        {active && <Check size={19} className="text-[#FFD900]" />}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
+                      </button>
+                    );
+                  })}
+                </div>
 
-              <Button
-                onClick={next}
-                className="mt-7 h-12 w-full rounded-xl bg-[#FFD900] font-extrabold text-black hover:bg-[#FFE347]"
-              >
-                Continue
-              </Button>
-            </section>
-          )}
+                <ContinueButton onClick={next} disabled={!data.name.trim()} />
+              </>
+            )}
 
-          {step === 3 && (
-            <section>
-              <StepTitle
-                eyebrow="AVATAR"
-                title="Make it recognizable"
-                description="Use a photo or continue with a clean initials avatar."
-              />
+            {step === 2 && (
+              <>
+                <StepTitle
+                  eyebrow="AVATAR"
+                  title="Give this profile a face."
+                  description="Upload an avatar to Cloudinary. The returned URL is stored in Nganji's profile avatar field."
+                />
 
-              <div className="mt-8 flex flex-col items-center">
-                <div className="flex size-32 items-center justify-center overflow-hidden rounded-3xl border border-[#FFD900]/25 bg-[#FFD900]/10">
-                  {data.avatarUrl ? (
-                    <img
-                      src={data.avatarUrl}
-                      alt=""
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <span className="font-display text-5xl font-black text-[#FFD900]">
-                      {data.name.slice(0, 1).toUpperCase()}
-                    </span>
+                <div className="mt-10 flex flex-col items-center">
+                  <div className="flex size-40 items-center justify-center overflow-hidden rounded-[32px] border border-[#FFD900]/20 bg-[#FFD900]/8">
+                    {data.avatarUrl ? (
+                      <img
+                        src={data.avatarUrl}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <span className="font-display text-6xl font-black text-[#FFD900]">
+                        {data.name.slice(0, 1).toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatar}
+                    className="hidden"
+                  />
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={uploading}
+                    onClick={() => fileRef.current?.click()}
+                    className="mt-5 rounded-xl border-white/10 bg-[#151515] text-white hover:border-[#FFD900]/40 hover:text-[#FFD900]"
+                  >
+                    {uploading ? (
+                      <Loader2 className="mr-2 size-4 animate-spin" />
+                    ) : (
+                      <Camera className="mr-2 size-4" />
+                    )}
+                    {uploading ? "Uploading..." : "Upload avatar"}
+                  </Button>
+
+                  {avatarError && (
+                    <p className="mt-3 text-xs text-[#FF6A6A]">
+                      {avatarError}
+                    </p>
                   )}
                 </div>
 
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleAvatar}
-                  className="hidden"
+                <ContinueButton
+                  onClick={next}
+                  label={data.avatarUrl ? "Continue" : "Continue without photo"}
                 />
+              </>
+            )}
+
+            {step === 3 && (
+              <>
+                <StepTitle
+                  eyebrow="TASTE"
+                  title="Shape the first recommendations."
+                  description="These choices personalize the frontend while the backend profile model remains intentionally unchanged."
+                />
+
+                <div className="mt-8 flex flex-wrap gap-3">
+                  {GENRES.map((genre) => {
+                    const active = data.preferredGenres.includes(genre);
+
+                    return (
+                      <button
+                        key={genre}
+                        type="button"
+                        onClick={() => toggleGenre(genre)}
+                        className={`rounded-full border px-5 py-3 text-sm font-semibold transition ${
+                          active
+                            ? "border-[#FFD900]/40 bg-[#FFD900]/10 text-[#FFD900]"
+                            : "border-white/[0.08] bg-[#121212] text-[#888] hover:text-white"
+                        }`}
+                      >
+                        {genre}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <ContinueButton onClick={next} />
+              </>
+            )}
+
+            {step === 4 && (
+              <>
+                <StepTitle
+                  eyebrow="WATCHING STYLE"
+                  title="Set language and playback."
+                  description="Profile-level controls stay independent from the parent account."
+                />
+
+                <div className="mt-8 grid gap-5 sm:grid-cols-2">
+                  <SelectField
+                    label="Preferred language"
+                    value={data.preferredLanguage}
+                    onChange={(value) => update({ preferredLanguage: value })}
+                  />
+
+                  <SelectField
+                    label="Subtitle language"
+                    value={data.subtitleLanguage}
+                    onChange={(value) => update({ subtitleLanguage: value })}
+                  />
+                </div>
+
+                <div className="mt-6 overflow-hidden rounded-2xl border border-white/[0.07] bg-[#111]">
+                  <ToggleRow
+                    title="Autoplay next episode"
+                    description="Continue automatically when episodic content arrives."
+                    checked={data.autoplayNextEpisode}
+                    onChange={(value) =>
+                      update({ autoplayNextEpisode: value })
+                    }
+                  />
+
+                  <ToggleRow
+                    title="Autoplay previews"
+                    description="Allow preview behavior while browsing."
+                    checked={data.autoplayPreviews}
+                    onChange={(value) =>
+                      update({ autoplayPreviews: value })
+                    }
+                  />
+                </div>
+
+                <ContinueButton onClick={next} label="Review profile" />
+              </>
+            )}
+
+            {step === 5 && (
+              <>
+                <StepTitle
+                  eyebrow="PARENT ACCOUNT"
+                  title="Confirm profile creation."
+                  description="Nganji's backend requires the main account password before it inserts a new sub-profile."
+                />
+
+                <div className="mt-8 rounded-2xl border border-white/[0.07] bg-[#111] p-5">
+                  <ReviewRow label="Name" value={data.name} />
+                  <ReviewRow label="Viewing level" value={data.ageGroup} />
+                  <ReviewRow
+                    label="Genres"
+                    value={
+                      data.preferredGenres.length
+                        ? data.preferredGenres.join(", ")
+                        : "Discover for me"
+                    }
+                  />
+                  <ReviewRow
+                    label="Avatar"
+                    value={data.avatarUrl ? "Uploaded" : "Initials avatar"}
+                  />
+                </div>
+
+                <label className="mt-6 block">
+                  <span className="mb-2 block text-xs font-semibold text-[#8b8b8b]">
+                    Main account password
+                  </span>
+
+                  <div className="relative">
+                    <LockKeyhole
+                      size={16}
+                      className="absolute left-4 top-1/2 -translate-y-1/2 text-[#666]"
+                    />
+
+                    <Input
+                      type="password"
+                      autoComplete="current-password"
+                      value={data.password}
+                      onChange={(event) =>
+                        update({ password: event.target.value })
+                      }
+                      placeholder="Confirm account password"
+                      className="h-12 rounded-xl border-white/10 bg-[#151515] pl-11 text-white focus-visible:border-[#FFD900] focus-visible:ring-[#FFD900]/20"
+                    />
+                  </div>
+                </label>
 
                 <Button
                   type="button"
-                  variant="outline"
-                  disabled={uploading}
-                  onClick={() => fileRef.current?.click()}
-                  className="mt-5 rounded-xl border-white/10 bg-[#151515] text-white hover:border-[#FFD900]/40 hover:text-[#FFD900]"
+                  disabled={!data.password}
+                  onClick={() => onComplete(data)}
+                  className="mt-7 h-12 w-full rounded-xl bg-[#FFD900] font-extrabold text-black hover:bg-[#FFE347]"
                 >
-                  {uploading ? (
-                    <Loader2 className="mr-2 size-4 animate-spin" />
-                  ) : (
-                    <Camera className="mr-2 size-4" />
-                  )}
-                  {uploading ? "Uploading..." : "Upload photo"}
+                  Create profile
+                  <ChevronRight className="ml-2 size-4" />
                 </Button>
-
-                {avatarError && (
-                  <p className="mt-3 max-w-sm text-center text-xs text-[#FF5252]">
-                    {avatarError}
-                  </p>
-                )}
-              </div>
-
-              <Button
-                onClick={next}
-                className="mt-8 h-12 w-full rounded-xl bg-[#FFD900] font-extrabold text-black hover:bg-[#FFE347]"
-              >
-                Continue
-              </Button>
-            </section>
-          )}
-
-          {step === 4 && (
-            <section>
-              <StepTitle
-                eyebrow="TASTE"
-                title="What are you into?"
-                description="Choose a few genres so your first homepage already feels personal."
-              />
-
-              <div className="mt-8 flex flex-wrap gap-3">
-                {GENRES.map((genre) => {
-                  const active = data.preferredGenres.includes(genre);
-
-                  return (
-                    <button
-                      key={genre}
-                      type="button"
-                      onClick={() => toggleGenre(genre)}
-                      className={`rounded-full border px-5 py-3 text-sm font-semibold transition ${
-                        active
-                          ? "border-[#FFD900]/50 bg-[#FFD900]/10 text-[#FFD900]"
-                          : "border-white/10 bg-[#151515] text-[#B8B8B8] hover:border-white/20 hover:text-white"
-                      }`}
-                    >
-                      {genre}
-                    </button>
-                  );
-                })}
-              </div>
-
-              <Button
-                onClick={next}
-                className="mt-8 h-12 w-full rounded-xl bg-[#FFD900] font-extrabold text-black hover:bg-[#FFE347]"
-              >
-                Continue
-              </Button>
-            </section>
-          )}
-
-          {step === 5 && (
-            <section>
-              <StepTitle
-                eyebrow="LANGUAGE & PLAYBACK"
-                title="Set your watching style"
-                description="You can change these preferences anytime from Settings."
-              />
-
-              <div className="mt-8 grid gap-5 sm:grid-cols-2">
-                <SelectField
-                  label="Preferred language"
-                  value={data.preferredLanguage}
-                  onChange={(value) => update({ preferredLanguage: value })}
-                />
-                <SelectField
-                  label="Subtitle language"
-                  value={data.subtitleLanguage}
-                  onChange={(value) => update({ subtitleLanguage: value })}
-                />
-              </div>
-
-              <div className="mt-6 overflow-hidden rounded-2xl border border-white/10 bg-[#101010]">
-                <ToggleRow
-                  title="Autoplay next episode"
-                  description="Continue a series automatically."
-                  checked={data.autoplayNextEpisode}
-                  onChange={(value) => update({ autoplayNextEpisode: value })}
-                />
-                <ToggleRow
-                  title="Autoplay previews"
-                  description="Allow muted previews while browsing."
-                  checked={data.autoplayPreviews}
-                  onChange={(value) => update({ autoplayPreviews: value })}
-                />
-              </div>
-
-              <Button
-                onClick={next}
-                className="mt-8 h-12 w-full rounded-xl bg-[#FFD900] font-extrabold text-black hover:bg-[#FFE347]"
-              >
-                Review profile
-              </Button>
-            </section>
-          )}
-
-          {step === 6 && (
-            <section>
-              <StepTitle
-                eyebrow="READY"
-                title={`Meet ${data.name}`}
-                description="24/7Box will use these choices to shape this profile's catalog and recommendations."
-              />
-
-              <div className="mt-8 rounded-2xl border border-white/10 bg-[#101010] p-6">
-                <ReviewRow label="Viewing level" value={data.ageGroup} />
-                <ReviewRow
-                  label="Genres"
-                  value={
-                    data.preferredGenres.length
-                      ? data.preferredGenres.join(", ")
-                      : "Discover for me"
-                  }
-                />
-                <ReviewRow
-                  label="Language"
-                  value={data.preferredLanguage.toUpperCase()}
-                />
-                <ReviewRow
-                  label="Autoplay next episode"
-                  value={data.autoplayNextEpisode ? "On" : "Off"}
-                />
-              </div>
-
-              <Button
-                onClick={() => onComplete(data)}
-                className="mt-8 h-12 w-full rounded-xl bg-[#FFD900] font-extrabold text-black hover:bg-[#FFE347]"
-              >
-                Create profile
-                <ChevronRight size={17} className="ml-2" />
-              </Button>
-            </section>
-          )}
-        </motion.div>
-      </AnimatePresence>
+              </>
+            )}
+          </motion.div>
+        </AnimatePresence>
+      </section>
     </div>
   );
 }
@@ -413,29 +462,44 @@ export default function ProfileWizard({ onCancel, onComplete }) {
 function StepTitle({ eyebrow, title, description }) {
   return (
     <>
-      <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-[#FFD900]">
+      <p className="text-xs font-black uppercase tracking-[0.2em] text-[#FFD900]">
         {eyebrow}
       </p>
-      <h2 className="mt-3 font-display text-4xl font-bold tracking-[-0.035em]">
+      <h3 className="mt-3 font-display text-4xl font-bold tracking-[-0.04em]">
         {title}
-      </h2>
-      <p className="mt-3 max-w-xl text-sm leading-6 text-[#747474]">
+      </h3>
+      <p className="mt-3 max-w-xl text-sm leading-6 text-[#777]">
         {description}
       </p>
     </>
   );
 }
 
+function ContinueButton({ onClick, disabled = false, label = "Continue" }) {
+  return (
+    <Button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="mt-8 h-12 w-full rounded-xl bg-[#FFD900] font-extrabold text-black hover:bg-[#FFE347]"
+    >
+      {label}
+      <ChevronRight className="ml-2 size-4" />
+    </Button>
+  );
+}
+
 function SelectField({ label, value, onChange }) {
   return (
     <label>
-      <span className="mb-2 block text-sm font-semibold text-[#B8B8B8]">
+      <span className="mb-2 block text-xs font-semibold text-[#8b8b8b]">
         {label}
       </span>
+
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="h-12 w-full rounded-xl border border-white/10 bg-[#151515] px-4 text-sm outline-none focus:border-[#FFD900]/60"
+        className="h-12 w-full rounded-xl border border-white/10 bg-[#151515] px-4 text-sm text-white outline-none focus:border-[#FFD900]/50"
       >
         <option value="en">English</option>
         <option value="rw">Kinyarwanda</option>
@@ -450,11 +514,11 @@ function ToggleRow({ title, description, checked, onChange }) {
     <button
       type="button"
       onClick={() => onChange(!checked)}
-      className="flex w-full items-center justify-between gap-6 border-b border-white/[0.06] p-5 text-left last:border-0"
+      className="flex w-full items-center justify-between gap-5 border-b border-white/[0.06] p-5 text-left last:border-0"
     >
       <div>
-        <p className="font-semibold">{title}</p>
-        <p className="mt-1 text-sm text-[#747474]">{description}</p>
+        <p className="text-sm font-semibold">{title}</p>
+        <p className="mt-1 text-xs leading-5 text-[#666]">{description}</p>
       </div>
 
       <span
@@ -474,9 +538,11 @@ function ToggleRow({ title, description, checked, onChange }) {
 
 function ReviewRow({ label, value }) {
   return (
-    <div className="flex justify-between gap-4 border-b border-white/[0.06] py-4 last:border-0">
-      <span className="text-sm text-[#747474]">{label}</span>
-      <span className="max-w-[62%] text-right text-sm font-semibold">{value}</span>
+    <div className="flex justify-between gap-5 border-b border-white/[0.06] py-3.5 last:border-0">
+      <span className="text-xs text-[#666]">{label}</span>
+      <span className="max-w-[65%] text-right text-xs font-bold text-[#bbb]">
+        {value}
+      </span>
     </div>
   );
 }
